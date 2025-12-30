@@ -5,21 +5,86 @@ allowed-tools: Bash, Read, Glob, Grep, Task, Write, Edit, AskUserQuestion, Skill
 
 # Feature Development Command
 
-Complete feature development workflow from natural language description to implemented code.
+Complete feature development workflow from any source to implemented code.
 
-**Usage**: `/feature <description>`
+**Usage**: `/feature <source>`
 
-**Example**: `/feature add user authentication with JWT tokens`
+**Sources supported**:
+- Text description: `/feature add user authentication with JWT tokens`
+- Jira ticket: `/feature CLDS-1234`
+- GitHub issue: `/feature https://github.com/owner/repo/issues/123`
+
+**Options**:
+- `--quick`: Skip confirmation checkpoints
 
 ## Arguments
 
-The feature description is provided in `$ARGUMENTS`.
+The source is provided in `$ARGUMENTS`. Parse it to determine the source type:
+
+### Source Type Detection
+
+```
+if $ARGUMENTS is empty:
+    → Ask user for description
+else if $ARGUMENTS matches /^[A-Z]+-\d+$/ (e.g., CLDS-1234, INF-567):
+    → Jira ticket
+else if $ARGUMENTS matches GitHub issue URL pattern:
+    → GitHub issue
+else:
+    → Text description
+```
+
+### Fetching External Sources
+
+**Jira Ticket**:
+```bash
+TICKET_KEY="$ARGUMENTS"
+acli jira workitem view $TICKET_KEY --fields "summary,description,status,assignee,labels"
+```
+
+Extract from ticket:
+- Summary → Feature title
+- Description → Requirements/acceptance criteria
+- Labels → Tags for categorization
+
+**GitHub Issue**:
+```bash
+# Parse URL: https://github.com/owner/repo/issues/123
+gh issue view 123 -R owner/repo --json title,body,labels,assignee
+```
+
+Extract from issue:
+- Title → Feature title
+- Body → Requirements/acceptance criteria
+- Labels → Tags for categorization
+
+### Pre-populating Spec
+
+When source is a ticket/issue, pre-populate the spec with:
+
+```markdown
+# Feature: [Title from ticket]
+
+**Source**: [CLDS-1234](https://jira.example.com/browse/CLDS-1234) | [Issue #123](https://github.com/...)
+
+## Overview
+[Description from ticket]
+
+## Requirements
+[Parsed from ticket description/acceptance criteria]
+
+## Out of Scope
+[To be determined during clarify phase]
+```
 
 If `$ARGUMENTS` is empty, ask the user:
 ```
 What feature would you like to build?
 
-Please describe it in a sentence or two.
+You can provide:
+- A description: "add user authentication with JWT"
+- A Jira ticket: CLDS-1234
+- A GitHub issue URL: https://github.com/owner/repo/issues/123
 ```
 
 ---

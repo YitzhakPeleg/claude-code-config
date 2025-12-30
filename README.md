@@ -43,15 +43,25 @@ These are called by `/feature` but can be run individually:
 Single command to go from idea to implementation:
 
 ```bash
+# From a description
 /feature "add user authentication with JWT"
+
+# From a Jira ticket
+/feature CLDS-1234
+
+# From a GitHub issue
+/feature https://github.com/owner/repo/issues/123
+
+# Quick mode (skip confirmations)
+/feature --quick CLDS-1234
 ```
 
 This runs the full workflow with checkpoints:
 
-```
-/feature "add user auth"
+```text
+/feature <source>
     │
-    ├─► Specify   → spec.md created
+    ├─► Specify   → spec.md created (pre-populated if ticket/issue)
     ├─► Clarify   → gaps filled
     ├─► Plan      → technical design
     ├─► Tasks     → actionable checklist
@@ -59,7 +69,7 @@ This runs the full workflow with checkpoints:
     └─► Implement → code written
 ```
 
-Use `--quick` to skip confirmations: `/feature --quick "add auth"`
+When using a ticket/issue, the spec is pre-populated with the title, description, and requirements from the source.
 
 ### Hooks (`hooks/`)
 
