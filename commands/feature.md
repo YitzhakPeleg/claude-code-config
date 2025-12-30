@@ -310,7 +310,7 @@ Changes:
 Next steps:
 1. Run tests: make test
 2. Review changes: git diff
-3. Create PR: /pr:review
+3. Create PR: /pr:create
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```

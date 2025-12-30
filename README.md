@@ -20,6 +20,7 @@ Personal Claude Code configuration for Python backend development with async pat
 | Command | Description |
 |---------|-------------|
 | `/feature` | **End-to-end feature development** - from idea to code |
+| `/pr:create` | Create PR with ticket linking and structured description |
 | `/pr:review` | Review PRs or local changes |
 | `/pr:fix` | Fix PR review comments |
 | `/pr:review-loop` | Iterative review-fix loop |
@@ -91,6 +92,33 @@ cp -r claude-code-config/.claude ~/
 ```
 
 ## Key Features
+
+### PR Creation
+
+The `/pr:create` command generates well-structured pull requests:
+
+- **Auto-links tickets**: Detects Jira tickets or GitHub issues from branch name
+- **Structured description**: Problem, Solution, Changes, Testing sections
+- **Context-aware**: Pulls info from tickets and spec files if available
+
+Example PR description:
+
+```markdown
+## Problem
+Users cannot reset passwords, causing support tickets.
+Resolves [CLDS-1234](https://jira.example.com/browse/CLDS-1234)
+
+## Solution
+Added password reset flow with email verification...
+
+## Changes
+- `src/auth/`: New reset endpoints
+- `database/`: Migration for tokens table
+
+## Testing
+- [x] Unit tests for reset flow
+- [x] Manual testing completed
+```
 
 ### Code Review System
 
