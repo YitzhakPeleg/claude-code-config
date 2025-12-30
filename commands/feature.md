@@ -309,8 +309,8 @@ Changes:
 
 Next steps:
 1. Run tests: make test
-2. Review changes: git diff
-3. Create PR: /pr:create
+2. Create PR: /pr:create
+3. Review & iterate: /pr:review-loop
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
