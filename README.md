@@ -15,33 +15,51 @@ Personal Claude Code configuration for Python backend development with async pat
 
 ### Commands (`commands/`)
 
+#### Main Commands
+
 | Command | Description |
 |---------|-------------|
-| `/pr:review` | Review PRs or local changes against develop branch |
-| `/pr:fix` | Fix PR review comments (from local file + GitHub) |
-| `/pr:review-loop` | Iterative review-fix loop until no blocking issues |
-| `/specify` | Create feature specifications from natural language |
-| `/plan` | Generate implementation plans |
-| `/tasks` | Generate task lists from specs |
-| `/clarify` | Identify underspecified areas in specs |
-| `/analyze` | Cross-artifact consistency analysis |
-| `/constitution` | Manage project coding principles |
+| `/feature` | **End-to-end feature development** - from idea to code |
+| `/pr:review` | Review PRs or local changes |
+| `/pr:fix` | Fix PR review comments |
+| `/pr:review-loop` | Iterative review-fix loop |
 
-### Feature Development Workflow (`.specify/`)
+#### Feature Sub-Commands
 
-Scaffolding templates for structured feature development:
+These are called by `/feature` but can be run individually:
+
+| Command | Description |
+|---------|-------------|
+| `/specify` | Create feature specification |
+| `/clarify` | Fill gaps in specification |
+| `/plan` | Generate technical design |
+| `/tasks` | Create task checklist |
+| `/analyze` | Consistency check |
+| `/implement` | Execute tasks |
+| `/constitution` | Manage project principles |
+
+### Feature Development Workflow
+
+Single command to go from idea to implementation:
+
+```bash
+/feature "add user authentication with JWT"
+```
+
+This runs the full workflow with checkpoints:
 
 ```
-/specify "add user authentication"
-    ↓
-/clarify (ask clarifying questions)
-    ↓
-/plan (generate implementation plan)
-    ↓
-/tasks (create task checklist)
-    ↓
-/implement (execute tasks)
+/feature "add user auth"
+    │
+    ├─► Specify   → spec.md created
+    ├─► Clarify   → gaps filled
+    ├─► Plan      → technical design
+    ├─► Tasks     → actionable checklist
+    ├─► Analyze   → consistency check
+    └─► Implement → code written
 ```
+
+Use `--quick` to skip confirmations: `/feature --quick "add auth"`
 
 ### Hooks (`hooks/`)
 
