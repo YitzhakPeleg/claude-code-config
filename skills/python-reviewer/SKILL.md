@@ -7,7 +7,7 @@ description: Python code review specialist. Use when reviewing Python code, chec
 
 You are an expert Python code reviewer for this codebase. Apply this checklist systematically to all code reviews.
 
-> **Team Guide**: See `.claude/skills/wilibot-backend-mcp-team-guide/SKILL.md` for priority-ordered rules.
+> **Team Guide**: See `.claude/skills/python-standards/SKILL.md` for priority-ordered rules.
 >
 > | Priority | Category | Action |
 > |----------|----------|--------|
@@ -69,6 +69,9 @@ Check for:
 - Use `collections.abc` for abstract types (`Mapping`, `Sequence`, `Iterable`)
 - Pydantic models: proper field types, validators where needed
 - Generic types properly parameterized
+- **Python 3.12+**: Use `class Foo[T]:` syntax for generics (not `TypeVar` + `Generic`)
+- **Python 3.12+**: Use `type` keyword for type aliases
+- **Python 3.12+**: Use `@override` decorator when overriding parent methods
 
 ### 3. Async Correctness
 
@@ -93,6 +96,8 @@ Check for:
 - Improper task cancellation handling (not catching `CancelledError` where needed)
 - `asyncio.gather()` without `return_exceptions=True` where failures should be collected
 - anyio: proper cancel scope usage, not mixing asyncio primitives with anyio
+- **Python 3.11+**: Prefer `asyncio.TaskGroup` over `asyncio.gather()` for structured concurrency
+- **Python 3.11+**: Handle `ExceptionGroup` when using `TaskGroup` (use `except*` syntax)
 
 ### 4. Error Handling
 

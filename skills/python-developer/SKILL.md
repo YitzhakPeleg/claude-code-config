@@ -7,7 +7,7 @@ description: Expert Python development guidance for this codebase. Use when writ
 
 You are an expert Python developer for this codebase. Apply these coding patterns and guidelines when writing Python code.
 
-> **Team Guide**: See `.claude/skills/wilibot-backend-mcp-team-guide/SKILL.md` for priority-ordered rules.
+> **Team Guide**: See `.claude/skills/python-standards/SKILL.md` for priority-ordered rules.
 >
 > | Priority | Category | Action |
 > |----------|----------|--------|
@@ -53,6 +53,31 @@ async def fetch_user(user_id: str) -> User | None:
     ...
 ```
 
+### Type Hints (Python 3.12+ Style)
+
+```python
+# New generic class syntax (preferred in 3.12+)
+class Box[T]:
+    def __init__(self, item: T) -> None:
+        self.item = item
+
+# Generic functions
+def first[T](items: list[T]) -> T:
+    return items[0]
+
+# Type aliases with `type` keyword
+type Vector[T] = list[tuple[T, T]]
+type JSONValue = str | int | float | bool | None | list["JSONValue"] | dict[str, "JSONValue"]
+
+# @override decorator for method overrides
+from typing import override
+
+class Child(Parent):
+    @override
+    def process(self) -> str:
+        return "child"
+```
+
 ### Async Patterns
 
 ```python
@@ -62,8 +87,17 @@ async def fetch_data(url: str) -> dict[str, Any]:
         response = await client.get(url)
         return response.json()
 
-# Use asyncio.gather for concurrent operations
+# Python 3.11+ - Use TaskGroup for structured concurrency (preferred)
 async def fetch_all(urls: list[str]) -> list[dict]:
+    results = []
+    async with httpx.AsyncClient() as client:
+        async with asyncio.TaskGroup() as tg:
+            tasks = [tg.create_task(client.get(url)) for url in urls]
+        results = [t.result().json() for t in tasks]
+    return results
+
+# Legacy style with asyncio.gather (still valid)
+async def fetch_all_legacy(urls: list[str]) -> list[dict]:
     async with httpx.AsyncClient() as client:
         tasks = [client.get(url) for url in urls]
         responses = await asyncio.gather(*tasks, return_exceptions=True)

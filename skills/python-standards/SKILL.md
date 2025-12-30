@@ -1,13 +1,13 @@
 ---
-name: wilibot-backend-mcp-team-guide
-description: WiliBot backend and MCP development guide. Use when working on the wilibot-backend-python or wiliot-mcp-python projects, implementing agents, or integrating MCP tools.
+name: python-standards
+description: Python 3.12+ coding standards and conventions (source of truth). Use when working on Python projects, implementing features, or reviewing code for standards compliance.
 ---
 
-# WiliBot Backend & MCP Team Guide
+# Python Backend & MCP Team Guide
 
 ## What Is This Guide?
 
-This is the **source of truth** for coding standards in the WiliBot backend (`wilibot-backend-python`) and MCP server (`wiliot-mcp-python`) projects.
+This is the **source of truth** for coding standards in Python backend and MCP server projects.
 
 ### Purpose
 
@@ -50,7 +50,7 @@ Issues in this category **block merge**. They represent security vulnerabilities
 |------|-----------|------------------|
 | 1.1 | **Input Validation** | All user input must be sanitized and validated. Never trust external data. |
 | 1.2 | **Secrets Management** | No hardcoded credentials, API keys, or tokens. Use environment variables or secret managers. Never log secrets. |
-| 1.3 | **Dangerous Functions** | FORBIDDEN in production: `eval()`, `exec()`, `os.system()`, `pickle.loads()`, `yaml.load()` (use `safe_load`), `assert` for validation. |
+| 1.3 | **Dangerous Functions** | FORBIDDEN in production: dynamic code execution, `os.system()`, unsafe deserialization, `yaml.load()` (use `safe_load`), `assert` for validation. |
 | 1.4 | **SQL Injection** | Only parameterized queries. Never use f-strings or string concatenation for SQL. |
 | 1.5 | **Error Exposure** | Error messages must not expose sensitive system details, stack traces, or internal paths to users. |
 | 1.6 | **Multi-tenancy** | All database queries must be scoped by `owner_id`. No cross-tenant data access. |
@@ -61,10 +61,10 @@ Issues in this category **block merge**. They represent security vulnerabilities
 ```python
 # 1.4 SQL Injection
 # NEVER
-cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")
+cursor.run(f"SELECT * FROM users WHERE id = {user_id}")
 
 # ALWAYS
-cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+cursor.run("SELECT * FROM users WHERE id = %s", (user_id,))
 
 # 1.6 Multi-tenancy
 # NEVER
@@ -91,6 +91,13 @@ Issues in this category **should be fixed** before merge. They ensure code consi
 | 2.7 | **Function Size** | Functions should be under 50 lines. If longer, split into smaller functions. |
 | 2.8 | **Parameters** | Maximum 4 parameters per function. Use dataclass or Pydantic model for more. |
 | 2.9 | **Nesting** | Maximum 3 levels of nesting. Use early returns to reduce depth. |
+| 2.10 | **TaskGroup** | Use `asyncio.TaskGroup` for structured concurrency (Python 3.11+). |
+| 2.11 | **ExceptionGroups** | Use `except*` for handling ExceptionGroups from TaskGroup (Python 3.11+). |
+| 2.12 | **Exception Notes** | Use `e.add_note()` to add context to exceptions (Python 3.11+). |
+| 2.13 | **@override** | Use `@override` decorator when overriding parent methods (Python 3.12+). |
+| 2.14 | **Generic Syntax** | Prefer `class Foo[T]:` syntax for generics (Python 3.12+). |
+| 2.15 | **Type Aliases** | Use `type` keyword for type aliases (Python 3.12+). |
+| 2.16 | **Typed kwargs** | Use `Unpack[TypedDict]` for typed `**kwargs` (Python 3.12+). |
 
 ### Style Examples
 
@@ -158,6 +165,327 @@ async def fetch():
     await asyncio.sleep(1)
     async with httpx.AsyncClient() as client:
         response = await client.get(url)
+```
+
+---
+
+## Python 3.11+ Features
+
+### Exception Groups and `except*` (PEP 654)
+
+```python
+# Raise multiple exceptions together
+raise ExceptionGroup("multiple errors", [
+    ValueError("invalid value"),
+    TypeError("wrong type"),
+])
+
+# Handle specific exception types from a group
+try:
+    async with asyncio.TaskGroup() as tg:
+        tg.create_task(might_fail_1())
+        tg.create_task(might_fail_2())
+except* ValueError as e:
+    print(f"Value errors: {e.exceptions}")
+except* TypeError as e:
+    print(f"Type errors: {e.exceptions}")
+
+# Add notes to exceptions for context
+try:
+    process_data(data)
+except ProcessingError as e:
+    e.add_note(f"Processing failed for user_id={user_id}")
+    raise
+```
+
+### asyncio.TaskGroup (Structured Concurrency)
+
+```python
+# Old style - error handling issues, tasks may leak
+tasks = [asyncio.create_task(fetch(url)) for url in urls]
+results = await asyncio.gather(*tasks, return_exceptions=True)
+
+# Python 3.11+ style - proper cancellation and error handling
+async with asyncio.TaskGroup() as tg:
+    tasks = [tg.create_task(fetch(url)) for url in urls]
+# All tasks complete when exiting
+# If one fails, others are cancelled
+# Errors raised as ExceptionGroup
+```
+
+### tomllib - Built-in TOML Parser
+
+```python
+import tomllib
+
+# Read pyproject.toml
+with open("pyproject.toml", "rb") as f:
+    config = tomllib.load(f)
+
+# Note: tomllib is read-only; use tomli-w for writing
+```
+
+---
+
+## Python 3.12+ Features
+
+### Type Parameter Syntax (PEP 695)
+
+```python
+# Old style (still valid)
+from typing import TypeVar, Generic
+T = TypeVar('T')
+class Box(Generic[T]):
+    def __init__(self, item: T) -> None:
+        self.item = item
+
+# Python 3.12+ style (preferred)
+class Box[T]:
+    def __init__(self, item: T) -> None:
+        self.item = item
+
+# Generic functions
+def first[T](items: list[T]) -> T:
+    return items[0]
+
+# Type aliases with lazy evaluation
+type Vector[T] = list[tuple[T, T]]
+```
+
+### @override Decorator (PEP 698)
+
+```python
+from typing import override
+
+class Parent:
+    def process(self) -> str:
+        return "parent"
+
+class Child(Parent):
+    @override  # Type checker verifies this actually overrides
+    def process(self) -> str:
+        return "child"
+
+    @override  # Error! 'handle' doesn't exist in Parent
+    def handle(self) -> None:
+        pass
+```
+
+### Improved F-Strings
+
+```python
+# Quote reuse now allowed
+items = ["a", "b", "c"]
+result = f"Items: {', '.join(items)}"  # Quotes inside f-string OK
+
+# Multi-line expressions with comments
+data = f"""Result: {
+    compute_value()  # This comment is now allowed
+}"""
+```
+
+### TypedDict for **kwargs (PEP 692)
+
+```python
+from typing import TypedDict, Unpack
+
+class RequestOptions(TypedDict, total=False):
+    timeout: float
+    retries: int
+    headers: dict[str, str]
+
+def make_request(url: str, **kwargs: Unpack[RequestOptions]) -> Response:
+    # kwargs is now typed with specific keys
+    timeout = kwargs.get("timeout", 30.0)
+    ...
+```
+
+---
+
+## Modern Python Preferences
+
+These are preferred patterns over legacy alternatives. Using modern idioms improves readability and safety.
+
+### Path Operations: `pathlib` over `os.path`
+
+```python
+# Avoid - legacy os.path
+import os
+path = os.path.join(base_dir, "subdir", "file.txt")
+if os.path.exists(path):
+    with open(path) as f:
+        content = f.read()
+name = os.path.basename(path)
+ext = os.path.splitext(path)[1]
+
+# Prefer - pathlib.Path
+from pathlib import Path
+path = Path(base_dir) / "subdir" / "file.txt"
+if path.exists():
+    content = path.read_text()
+name = path.name
+ext = path.suffix
+```
+
+### String Formatting: f-strings over `.format()` and `%`
+
+```python
+# Avoid - legacy formatting
+msg = "User %s has %d items" % (name, count)
+msg = "User {} has {} items".format(name, count)
+
+# Prefer - f-strings
+msg = f"User {name} has {count} items"
+
+# For logging, use lazy formatting (don't format until needed)
+logger.info("User %s has %d items", name, count)  # OK for logging
+```
+
+### Type Hints: Modern syntax over typing module
+
+```python
+# Avoid - legacy typing imports
+from typing import Optional, List, Dict, Union, Tuple
+
+def process(
+    items: List[str],
+    config: Optional[Dict[str, Any]] = None
+) -> Tuple[str, int]:
+    ...
+
+# Prefer - built-in generics (Python 3.9+) and union syntax (3.10+)
+def process(
+    items: list[str],
+    config: dict[str, Any] | None = None
+) -> tuple[str, int]:
+    ...
+```
+
+### Collections: `collections.abc` for abstract types
+
+```python
+# Avoid - concrete types in signatures when not needed
+def process(items: list[str]) -> dict[str, int]: ...
+
+# Prefer - abstract types for input, concrete for output
+from collections.abc import Iterable, Mapping, Sequence
+
+def process(items: Iterable[str]) -> dict[str, int]: ...
+def lookup(data: Mapping[str, Any]) -> str: ...
+def get_slice(items: Sequence[T]) -> T: ...
+```
+
+### Context Managers: `with` for resource management
+
+```python
+# Avoid - manual resource management
+f = open("file.txt")
+try:
+    content = f.read()
+finally:
+    f.close()
+
+# Prefer - context manager
+with open("file.txt") as f:
+    content = f.read()
+
+# For multiple resources
+with (
+    open("input.txt") as infile,
+    open("output.txt", "w") as outfile,
+):
+    outfile.write(infile.read())
+```
+
+### Iteration: Use built-in helpers
+
+```python
+# Avoid - index-based iteration
+for i in range(len(items)):
+    print(i, items[i])
+
+# Prefer - enumerate
+for i, item in enumerate(items):
+    print(i, item)
+
+# Avoid - manual counter
+count = 0
+for item in items:
+    if item.is_valid():
+        count += 1
+
+# Prefer - sum with generator
+count = sum(1 for item in items if item.is_valid())
+
+# Avoid - manual zipping
+for i in range(len(list1)):
+    process(list1[i], list2[i])
+
+# Prefer - zip
+for a, b in zip(list1, list2, strict=True):  # strict=True catches length mismatch
+    process(a, b)
+```
+
+### Dict Operations: Modern syntax
+
+```python
+# Avoid - dict() constructor
+config = dict(timeout=30, retries=3)
+
+# Prefer - literal syntax
+config = {"timeout": 30, "retries": 3}
+
+# Avoid - .update() for merging
+merged = base_config.copy()
+merged.update(override_config)
+
+# Prefer - union operator (Python 3.9+)
+merged = base_config | override_config
+
+# Avoid - manual get with default
+value = d[key] if key in d else default
+
+# Prefer - .get() or walrus
+value = d.get(key, default)
+```
+
+### Structural Pattern Matching (Python 3.10+)
+
+```python
+# Avoid - nested if/elif chains
+if isinstance(response, SuccessResponse):
+    return response.data
+elif isinstance(response, ErrorResponse):
+    if response.code == 404:
+        return None
+    else:
+        raise APIError(response.message)
+
+# Prefer - match statement
+match response:
+    case SuccessResponse(data=data):
+        return data
+    case ErrorResponse(code=404):
+        return None
+    case ErrorResponse(message=msg):
+        raise APIError(msg)
+```
+
+### Walrus Operator for Assignment Expressions
+
+```python
+# Avoid - separate assignment and check
+match_result = re.search(pattern, text)
+if match_result:
+    process(match_result.group(1))
+
+# Prefer - walrus operator
+if match_result := re.search(pattern, text):
+    process(match_result.group(1))
+
+# Useful in while loops
+while chunk := file.read(8192):
+    process(chunk)
 ```
 
 ---
@@ -234,7 +562,7 @@ def route_by_intent(state: AgentState) -> str:
 - Emit "thinking text" at end of each step for internal steps
 - This provides visibility into agent progress for the UI
 
-### MCP Server (wiliot-mcp-python)
+### MCP Server
 
 **Tool Naming**:
 
@@ -353,7 +681,7 @@ async def test_full_agent_flow(db_session):
 - Mark async tests with `@pytest.mark.asyncio`
 - Use fixtures for setup/teardown
 - Test error cases, not just happy paths
-- Isolate tests - no dependency on execution order
+- Isolate tests - no dependency on order
 
 ### Database (PostgreSQL + Flyway)
 
@@ -572,6 +900,8 @@ These are the most frequently flagged issues in code reviews. Address them proac
 | Async race conditions | P1 | Use locks, proper task management |
 | Old Python style | P2 | Use modern syntax (3.10+ features) |
 | Poor test edge cases | P2 | Test empty, None, error conditions |
+| Missing @override | P2 | Add to all overridden methods (3.12+) |
+| Legacy generic syntax | P2 | Use `class Foo[T]:` syntax (3.12+) |
 
 ---
 
