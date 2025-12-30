@@ -51,7 +51,7 @@ Please describe it in a sentence or two.
 Run the specify workflow to create the initial specification:
 
 ```
-/specify $ARGUMENTS
+/feature:specify $ARGUMENTS
 ```
 
 This will:
@@ -82,7 +82,7 @@ Continue to clarification phase? (Y/n)
 Run the clarify workflow to identify and fill gaps:
 
 ```
-/clarify
+/feature:clarify
 ```
 
 This will:
@@ -116,7 +116,7 @@ If user wants to skip clarification (e.g., exploratory spike), warn:
 Run the plan workflow to create technical design:
 
 ```
-/plan
+/feature:plan
 ```
 
 This will:
@@ -150,7 +150,7 @@ Continue to task generation? (Y/n)
 Run the tasks workflow to generate actionable checklist:
 
 ```
-/tasks
+/feature:tasks
 ```
 
 This will:
@@ -181,7 +181,7 @@ Continue to consistency analysis? (Y/n)
 Run the analyze workflow to verify consistency:
 
 ```
-/analyze
+/feature:analyze
 ```
 
 This will:
@@ -214,7 +214,7 @@ If critical issues found, stop and ask user to resolve before continuing.
 Run the implement workflow to execute tasks:
 
 ```
-/implement
+/feature:implement
 ```
 
 This will:
@@ -306,11 +306,12 @@ Individual phases can still be run separately:
 
 | Command | Phase |
 |---------|-------|
-| `/specify` | Create specification |
-| `/clarify` | Fill spec gaps |
-| `/plan` | Technical design |
-| `/tasks` | Generate task list |
-| `/analyze` | Consistency check |
-| `/implement` | Execute tasks |
+| `/feature:specify` | Create specification |
+| `/feature:clarify` | Fill spec gaps |
+| `/feature:plan` | Technical design |
+| `/feature:tasks` | Generate task list |
+| `/feature:analyze` | Consistency check |
+| `/feature:implement` | Execute tasks |
+| `/feature:constitution` | Manage project principles |
 
 Use these when you need to re-run a specific phase or work incrementally.

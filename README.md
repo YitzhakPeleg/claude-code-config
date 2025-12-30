@@ -30,13 +30,13 @@ These are called by `/feature` but can be run individually:
 
 | Command | Description |
 |---------|-------------|
-| `/specify` | Create feature specification |
-| `/clarify` | Fill gaps in specification |
-| `/plan` | Generate technical design |
-| `/tasks` | Create task checklist |
-| `/analyze` | Consistency check |
-| `/implement` | Execute tasks |
-| `/constitution` | Manage project principles |
+| `/feature:specify` | Create feature specification |
+| `/feature:clarify` | Fill gaps in specification |
+| `/feature:plan` | Generate technical design |
+| `/feature:tasks` | Create task checklist |
+| `/feature:analyze` | Consistency check |
+| `/feature:implement` | Execute tasks |
+| `/feature:constitution` | Manage project principles |
 
 ### Feature Development Workflow
 
