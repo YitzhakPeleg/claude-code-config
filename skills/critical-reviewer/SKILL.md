@@ -17,64 +17,78 @@ Adopt this mindset before every review:
 
 > You are a senior engineer who MUST find issues before approving.
 > Be harsh but constructive. Finding nothing wrong is a failure of review, not a sign of perfect code.
-> Check: performance, edge cases, security, code smells, error handling, naming, test gaps.
+> Focus on actionable feedback that adds value - skip minor nitpicks.
 
-## Two-Pass Workflow
+## Three-Phase Workflow
 
-### Pass 1: Enumerate (No Fixes)
+### Phase 1: Context Analysis (Before Reviewing Code)
 
-Walk through every changed file and list ALL issues without suggesting fixes yet:
+Before looking at the diff, analyze the broader context:
+
+1. **Repository structure and architecture patterns**
+   - What are the key directories and their purposes?
+   - What architectural patterns does this repo follow?
+   - What conventions exist in similar files?
+
+2. **Related files and modules affected**
+   - What other files might be impacted by these changes?
+   - Are there shared utilities, types, or patterns being used?
+
+3. **Existing code patterns and conventions**
+   - How is error handling done elsewhere in the codebase?
+   - What naming conventions are used?
+   - How are similar features implemented?
+
+4. **PR description and linked issues**
+   - What does the ticket/issue describe?
+   - What are the acceptance criteria?
+   - How do these changes fit into the broader system design?
 
 **Output format:**
 
-```markdown
-## Pass 1: Issue Enumeration
+```text
+## Context Summary
 
-### file.py
-| Line | Issue | Why It Matters |
-|------|-------|----------------|
-| 42 | Missing timeout on API call | Could hang indefinitely |
-| 67 | Variable name `x` | Not descriptive |
-| 89 | No type hint on return | Reduces IDE support |
-
-### another_file.ts
-| Line | Issue | Why It Matters |
-|------|-------|----------------|
-| 15 | Using `any` type | Defeats TypeScript benefits |
-| 45 | No null check | Could throw at runtime |
+- **What this PR accomplishes**: [1-2 sentence description of the change]
+- **Architecture fit**: [How it fits into the repo's architecture]
+- **Relevant patterns**: [Key patterns/conventions from the codebase that apply]
 ```
 
-### Pass 2: Prioritize and Fix
+### Phase 2: Review the Changes
 
-After enumeration, categorize by severity and suggest fixes for top items:
+Focus on high-value feedback. **Skip minor style issues unless they impact readability.**
+
+**Priority focus areas:**
+
+| Priority | Focus Area | What to Check |
+|----------|------------|---------------|
+| 1 | Error handling & edge cases | Specific exceptions, recovery paths, boundary conditions |
+| 2 | Code maintainability & clarity | Readability, naming, complexity, single responsibility |
+| 3 | Consistency with codebase patterns | Does it match how similar code is written elsewhere? |
+| 4 | Performance issues | N+1 queries, unbounded operations, memory leaks |
+| 5 | Security concerns | Injection, secrets, auth, multi-tenancy scoping |
+| 6 | Documentation gaps | Missing docs for public APIs or complex logic |
 
 **Severity levels:**
 
-- **Critical** - Must fix before merge (bugs, security, data loss)
-- **Important** - Should fix before merge (types, error handling, performance)
-- **Suggestion** - Nice to have (style, minor improvements)
+- **CRITICAL** - Must fix before merge (bugs, security, data loss risks)
+- **IMPORTANT** - Should fix before merge (types, error handling, performance)
+- **SUGGESTION** - Nice to have (minor improvements that don't block merge)
 
-**Output format:**
+### Phase 3: Format Review Comments
 
-```markdown
-## Pass 2: Prioritized Issues
+Format each comment for easy copy-paste to GitHub:
 
-### Critical
-1. `file.py:42` - Missing timeout on API call
-   - **Fix**: Add `timeout=30` parameter to requests call
-
-### Important
-1. `file.py:89` - No type hint on return value
-   - **Fix**: Add `-> dict[str, Any]` return type
-
-### Suggestions
-1. `file.py:67` - Variable name `x` could be more descriptive
-   - **Fix**: Rename to `user_count` based on context
+```text
+File: path/to/file.py
+Line: 45
+Severity: IMPORTANT
+Comment: [Your actionable comment text here - explain the issue and suggest a fix]
 ```
 
-## Universal Checklist
+## Review Checklist
 
-Apply to both Python and TypeScript code:
+### Universal Checks
 
 | Category | What to Check |
 |----------|---------------|
@@ -84,8 +98,6 @@ Apply to both Python and TypeScript code:
 | Type Safety | No `any` (TS), complete type hints (Python) |
 | Tests | Edge cases covered, error paths tested |
 | Security | Injection prevention, no hardcoded secrets, auth checks |
-| Logging | Contextual info, appropriate log levels |
-| Naming | Descriptive, consistent with conventions |
 
 ### Python-Specific Checks
 
@@ -119,6 +131,12 @@ Apply to both Python and TypeScript code:
 - At least 1 concrete improvement suggestion
 - Rationale for approval/rejection
 
+**NEVER** include:
+
+- Positive or "good job" style comments
+- Praise for code that simply works
+- Comments that don't require action
+
 ## Minimum Findings Requirement
 
 If you cannot find 5 issues after thorough review:
@@ -129,9 +147,45 @@ If you cannot find 5 issues after thorough review:
    - Error message clarity and helpfulness
    - Log statement usefulness and context
    - Variable naming precision
-   - Comment accuracy (do comments match code?)
    - Test coverage gaps
 3. If still under 5, document why (e.g., "3-line typo fix with no logic changes")
+
+## Review Output Template
+
+Use this template for consistent review output:
+
+```markdown
+# Code Review
+
+## Context Summary
+
+- **What this PR accomplishes**: [Description]
+- **Architecture fit**: [How it fits into the repo's architecture]
+- **Relevant patterns**: [Patterns/conventions from the codebase]
+
+## Review Comments
+
+File: path/to/file.py
+Line: 42
+Severity: CRITICAL
+Comment: Missing timeout on API call. This could hang indefinitely if the external service is slow. Add `timeout=30` parameter.
+
+File: path/to/file.py
+Line: 89
+Severity: IMPORTANT
+Comment: No type hint on return value. Add `-> dict[str, Any]` to improve IDE support and documentation.
+
+File: path/to/file.py
+Line: 67
+Severity: SUGGESTION
+Comment: Variable name `x` is not descriptive. Consider renaming to `user_count` based on context.
+
+## Verdict
+
+**Status**: [APPROVED | CHANGES_REQUIRED]
+**Blocking Issues**: X critical, Y important
+**Rationale**: [Why approved or what must change]
+```
 
 ## Ready-to-Use Review Prompts
 
@@ -139,7 +193,8 @@ If you cannot find 5 issues after thorough review:
 
 ```text
 Review as a senior engineer who must find at least 5 issues before approving.
-Be harsh. Check: performance, edge cases, security, code smells, error handling, naming, test gaps.
+Focus on: error handling, edge cases, security, maintainability, patterns, performance.
+Skip minor style nitpicks. Format comments for GitHub copy-paste.
 ```
 
 ### Deep Dive Review
@@ -156,36 +211,6 @@ Find at least 10 issues before forming any approval opinion.
 Review with a security-first mindset. Assume an attacker will use this code.
 Check: input validation, injection risks, auth gaps, secrets exposure, multi-tenancy.
 Any security concern is automatically Critical severity.
-```
-
-## Review Output Template
-
-Use this template for consistent review output:
-
-```markdown
-# Code Review
-
-## Summary
-- **Files reviewed**: X
-- **Issues found**: Y (X critical, Y important, Z suggestions)
-- **Verdict**: [APPROVED | CHANGES_REQUIRED]
-
-## Pass 1: All Issues Enumerated
-[List every issue found]
-
-## Pass 2: Prioritized Findings
-
-### Critical
-[Must fix before merge]
-
-### Important
-[Should fix before merge]
-
-### Suggestions
-[Nice to have]
-
-## Verdict Rationale
-[Why approved or what must change]
 ```
 
 ## Integration with PR Commands
