@@ -105,13 +105,19 @@ Also examine the actual files changed to understand full context, not just the d
 
 #### 2b. REVIEWER Phase
 
-**Switch to Reviewer persona.** Load and apply the Python reviewer skill from `.claude/skills/python-reviewer.md`.
+**Switch to Reviewer persona.** Load and apply the `critical-reviewer` skill from `.claude/skills/critical-reviewer/SKILL.md`.
+
+**Apply critical review methodology:**
+
+- **Minimum 5 findings** per iteration before considering approval
+- **Two-pass workflow**: Enumerate all issues first, then prioritize
+- **No rubber-stamping**: Provide substantive feedback, never just "LGTM"
 
 Conduct a thorough review:
 
 - Apply the full checklist from the skill
-- Be genuinely critical - do not rubber-stamp
-- Consider the PR description for context on intent
+- Be genuinely critical - finding nothing wrong is a failure of review
+- Consider the PR description and Jira ticket for context on intent
 
 Write the review to `.pr-review.$PROJECT_NAME.$PR_NUMBER.md`:
 

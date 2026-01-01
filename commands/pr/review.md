@@ -260,6 +260,32 @@ Apply these checks to all review modes:
 
 ---
 
+## Critical Review Methodology
+
+**Load the `critical-reviewer` skill** from `.claude/skills/critical-reviewer/SKILL.md`.
+
+Apply these requirements to every review:
+
+1. **Minimum 5 findings** before any approval
+2. **Two-pass workflow**: Enumerate all issues first, then prioritize
+3. **Anti-rubber-stamp**: Never just "LGTM" - provide substantive feedback
+
+For trivial changes (<10 lines, typos, config), document why fewer than 5 findings.
+
+### Review Prompts
+
+Use these internally when conducting reviews:
+
+**Standard**:
+> Review as a senior engineer who must find at least 5 issues before approving.
+> Be harsh. Check: performance, edge cases, security, code smells, error handling, naming, test gaps.
+
+**Deep Dive** (for complex changes):
+> Conduct a forensic code review. Assume bugs exist and find them.
+> Find at least 10 issues before forming any approval opinion.
+
+---
+
 ## Review Output Format
 
 ### For GitHub PRs (saved to file)
