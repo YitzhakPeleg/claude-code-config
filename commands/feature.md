@@ -94,6 +94,8 @@ You can provide:
 ```
 /feature "add user auth"
     │
+    ├─► Phase 0: Setup (Jira ticket + branch)
+    │
     ├─► Phase 1: Specify (create spec.md)
     │
     ├─► Phase 2: Clarify (fill gaps in spec)
@@ -104,12 +106,64 @@ You can provide:
     │
     ├─► Phase 5: Analyze (consistency check)
     │
-    └─► Phase 6: Implement (write code)
+    ├─► Phase 6: Implement (write code)
+    │
+    └─► Phase 7: Finalize (commit, PR, auto-merge)
 ```
 
 ---
 
 ## Execution
+
+### Phase 0: Setup (Jira Ticket + Branch)
+
+Before any development begins, ensure we have a Jira ticket and feature branch.
+
+**If source is a Jira ticket (e.g., CLDS-1234)**:
+
+- Use the provided ticket key
+- Fetch ticket details for context
+
+**If source is a text description**:
+
+- Create a new Jira ticket:
+
+```bash
+acli jira workitem create --project "CLDS" --type "Task" \
+  --summary "<Feature summary from description>" \
+  --description "<Full feature description>"
+```
+
+- Extract the ticket key from the response (e.g., CLDS-16964)
+
+**Create the feature branch**:
+
+```bash
+# Detect the project directory and navigate to it
+cd <project-directory>
+
+# Create branch based on Jira ticket (NO slashes in branch name)
+git checkout -b <TICKET_KEY>-<slug-from-summary>
+# Example: CLDS-16964-disable-mlflow-tracing
+```
+
+**IMPORTANT**: Branch names must NOT contain `/` characters. Use only the ticket key and slug separated by hyphens.
+
+**Checkpoint**: Show the user:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Phase 0: Setup Complete
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Jira: <TICKET_KEY> - <TICKET_SUMMARY>
+Branch: <TICKET_KEY>-<slug>
+Project: <PROJECT_NAME>
+
+Continue to specification phase? (Y/n)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+---
 
 ### Phase 1: Specify
 
@@ -288,30 +342,112 @@ This will:
 3. Mark tasks complete
 4. Run linting and formatting
 
+**Checkpoint**: Show the user:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Phase 6: Implementation Complete
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Files modified: X
+Files created: Y
+Tests added: Z
+
+Continue to finalization? (Y/n)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+---
+
+### Phase 7: Finalize (Commit, PR, Auto-merge)
+
+After implementation is complete, finalize with commit, PR, and auto-merge.
+
+**Step 7.1: Lint and Format**
+
+```bash
+cd <project-directory>
+make format   # Auto-format code
+make lint     # Run linting checks
+```
+
+If linting fails, fix the issues before proceeding.
+
+**Step 7.2: Commit Changes**
+
+```bash
+git add .
+git commit -m "$(cat <<'EOF'
+<TICKET_KEY>: <Short description>
+
+<Detailed description of changes>
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+EOF
+)"
+```
+
+**Step 7.3: Push to Remote**
+
+```bash
+git push -u origin <BRANCH_NAME>
+```
+
+**Step 7.4: Create Pull Request**
+
+```bash
+gh pr create --title "<TICKET_KEY>: <Summary>" --body "$(cat <<'EOF'
+## Summary
+
+- <Bullet point 1>
+- <Bullet point 2>
+
+## Test plan
+
+- [ ] <Test item 1>
+- [ ] <Test item 2>
+
+## Related
+
+- Jira: [<TICKET_KEY>](https://wiliot.atlassian.net/browse/<TICKET_KEY>)
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)"
+```
+
+**Step 7.5: Enable Auto-merge**
+
+```bash
+gh pr merge <PR_NUMBER> --auto --squash
+```
+
 **Final Output**:
+
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ Feature Complete!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Feature: $ARGUMENTS
+Jira: <TICKET_KEY>
 Branch: <BRANCH_NAME>
+PR: <PR_URL>
 
 Artifacts:
+
 - Spec: <SPEC_FILE_PATH>
 - Plan: <PLAN_FILE_PATH>
 - Tasks: <TASKS_FILE_PATH>
 
 Changes:
+
 - Files modified: X
 - Files created: Y
 - Tests added: Z
 
-Next steps:
-1. Run tests: make test
-2. Create PR: /pr:create
-3. Review & iterate: /pr:review-loop
-
+Status: Auto-merge enabled ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -377,6 +513,7 @@ Individual phases can still be run separately:
 | `/feature:tasks` | Generate task list |
 | `/feature:analyze` | Consistency check |
 | `/feature:implement` | Execute tasks |
+| `/feature:finalize` | Commit, PR, auto-merge |
 | `/feature:constitution` | Manage project principles |
 
 Use these when you need to re-run a specific phase or work incrementally.
