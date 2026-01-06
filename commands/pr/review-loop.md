@@ -103,17 +103,29 @@ gh pr diff $PR_NUMBER -R wiliot/$PROJECT_NAME
 
 Also examine the actual files changed to understand full context, not just the diff.
 
+#### 2a-bis. Reset Reviewer Mindset (Iterations 2+)
+
+**CRITICAL**: Before reviewing iteration 2+, mentally reset:
+
+1. **Pretend this is a NEW conversation** - Forget what you found in previous iterations
+2. **Re-read the critical-reviewer skill** - Apply the full "minimum 5 findings" rule fresh
+3. **Do NOT read the review file first** - Conduct review independently, THEN compare
+4. **Re-read Jira requirements** (if available) - Verify against original acceptance criteria, not just "fixes look good"
+
+> ⚠️ **Anti-anchoring rule**: Finding fewer issues in iteration 2+ because "issues were fixed" is a **reviewer failure**. New issues can always exist. Apply the same rigor as iteration 1.
+
 #### 2b. REVIEWER Phase
 
 **Switch to Reviewer persona.** Load and apply the `critical-reviewer` skill from `.claude/skills/critical-reviewer/SKILL.md`.
 
 **Apply critical review methodology:**
 
-- **Minimum 5 findings** per iteration before considering approval
+- **Minimum 5 findings** per iteration before considering approval (**regardless of iteration number**)
 - **Two-pass workflow**: Enumerate all issues first, then prioritize
 - **No rubber-stamping**: Provide substantive feedback, never just "LGTM"
+- **IMPORTANT**: Apply the SAME rigor as if this were iteration 1 in a fresh conversation
 
-Conduct a thorough review:
+Conduct a thorough review **as if you've never seen this code before**:
 
 - Apply the full checklist from the skill
 - Be genuinely critical - finding nothing wrong is a failure of review
@@ -205,6 +217,13 @@ Update the review file:
 
 #### 2e. Return to Step 2a
 
+**IMPORTANT**: Before returning to review:
+
+- Clear your mental slate - pretend this is a NEW conversation
+- DO NOT let previous findings anchor your review
+- The code may have introduced NEW issues while fixing old ones
+- Apply the full "minimum 5 findings" rule again
+
 Get fresh diff and review again.
 
 ---
@@ -269,3 +288,4 @@ Display progress clearly:
 - The review file can be used by `/pr:fix` if the loop is interrupted
 - When using worktree, ensure all operations (read, edit, lint, commit) happen in `$WORKTREE_PATH`
 - Always clean up worktrees when done to avoid cluttering the filesystem
+- **Anti-anchoring**: Each iteration MUST be reviewed with "fresh eyes" as if it were a new conversation. Approving because "iteration 1 issues were fixed" without finding new issues is a review failure.
