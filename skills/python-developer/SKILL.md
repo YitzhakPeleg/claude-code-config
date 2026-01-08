@@ -353,3 +353,161 @@ MAX_RETRIES = 3
 - All queries scoped by `owner_id` for tenant isolation
 - Use async sessions with `asyncpg`
 - Connection pooling via SQLAlchemy engine
+
+---
+
+## Advanced Patterns
+
+### Async Context Managers
+
+```python
+from contextlib import asynccontextmanager
+from collections.abc import AsyncGenerator
+
+@asynccontextmanager
+async def managed_resource() -> AsyncGenerator[Resource, None]:
+    """Properly manage async resources with cleanup."""
+    resource = await acquire_resource()
+    try:
+        yield resource
+    finally:
+        await resource.close()
+
+# Usage in FastAPI lifespan
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    # Startup
+    await init_database()
+    yield
+    # Shutdown
+    await close_database()
+```
+
+### Timeout Handling
+
+```python
+import asyncio
+
+async def fetch_with_timeout(url: str, timeout: float = 10.0) -> dict[str, Any]:
+    """Fetch with timeout - raises TimeoutError on timeout."""
+    async with asyncio.timeout(timeout):
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url)
+            return response.json()
+
+# With fallback
+async def fetch_with_fallback(url: str, default: dict[str, Any]) -> dict[str, Any]:
+    """Fetch with graceful fallback on timeout."""
+    try:
+        async with asyncio.timeout(5.0):
+            return await do_fetch(url)
+    except TimeoutError:
+        logger.warning("Request to %s timed out, using default", url)
+        return default
+```
+
+### Advanced Pydantic Validation
+
+```python
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+class QueryRequest(BaseModel):
+    """Request with complex validation logic."""
+
+    start_date: datetime
+    end_date: datetime
+    filters: dict[str, Any] = Field(default_factory=dict)
+    limit: int = Field(default=100, ge=1, le=1000)
+
+    @field_validator("filters")
+    @classmethod
+    def validate_filters(cls, v: dict[str, Any]) -> dict[str, Any]:
+        # Sanitize filter keys
+        allowed = {"status", "type", "owner_id"}
+        return {k: v for k, v in v.items() if k in allowed}
+
+    @model_validator(mode="after")
+    def validate_date_range(self) -> "QueryRequest":
+        if self.end_date < self.start_date:
+            raise ValueError("end_date must be after start_date")
+        return self
+```
+
+### Structured Logging
+
+```python
+import structlog
+
+logger = structlog.get_logger()
+
+async def process_request(request_id: str, user_id: str) -> Result:
+    """Use structured logging with context."""
+    log = logger.bind(request_id=request_id, user_id=user_id)
+
+    log.info("processing_started")
+    try:
+        result = await do_processing()
+        log.info("processing_completed", result_id=result.id)
+        return result
+    except ProcessingError as e:
+        log.error("processing_failed", error=str(e), error_type=type(e).__name__)
+        raise
+```
+
+### Retry Pattern with Backoff
+
+```python
+import asyncio
+from collections.abc import Callable, Awaitable
+from typing import TypeVar
+
+T = TypeVar("T")
+
+async def retry_with_backoff[T](
+    func: Callable[[], Awaitable[T]],
+    max_attempts: int = 3,
+    base_delay: float = 1.0,
+    max_delay: float = 30.0,
+) -> T:
+    """Retry async function with exponential backoff."""
+    for attempt in range(max_attempts):
+        try:
+            return await func()
+        except Exception as e:
+            if attempt == max_attempts - 1:
+                raise
+            delay = min(base_delay * (2 ** attempt), max_delay)
+            logger.warning(
+                "Attempt %d failed, retrying in %.1fs: %s",
+                attempt + 1, delay, e
+            )
+            await asyncio.sleep(delay)
+    raise RuntimeError("Unreachable")  # For type checker
+```
+
+### Dependency Injection Pattern
+
+```python
+from functools import lru_cache
+from typing import Annotated
+from fastapi import Depends
+
+class Settings(BaseModel):
+    """Application settings from environment."""
+    database_url: str
+    redis_url: str
+    debug: bool = False
+
+    model_config = {"env_prefix": "APP_"}
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+# Type alias for cleaner signatures
+SettingsDep = Annotated[Settings, Depends(get_settings)]
+
+@router.get("/health")
+async def health(settings: SettingsDep) -> dict[str, str]:
+    return {"status": "ok", "debug": str(settings.debug)}
+```
