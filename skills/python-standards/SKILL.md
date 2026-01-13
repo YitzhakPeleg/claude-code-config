@@ -98,6 +98,7 @@ Issues in this category **should be fixed** before merge. They ensure code consi
 | 2.14 | **Generic Syntax** | Prefer `class Foo[T]:` syntax for generics (Python 3.12+). |
 | 2.15 | **Type Aliases** | Use `type` keyword for type aliases (Python 3.12+). |
 | 2.16 | **Typed kwargs** | Use `Unpack[TypedDict]` for typed `**kwargs` (Python 3.12+). |
+| 2.17 | **Constants** | Extract repeated strings/magic numbers (appearing 2+ times) to a `constants.py` file. Exception: logging messages. |
 
 ### Style Examples
 
@@ -512,6 +513,23 @@ while chunk := file.read(8192):
 
 ### LangGraph
 
+**Message Content Extraction**:
+
+When extracting text content from LangGraph/LangChain messages, **always use `.text`** with a fallback pattern. The `.content` attribute may return a list or dict, not a string.
+
+```python
+# CORRECT: Use .text with fallback for backwards compatibility
+text = msg.text if hasattr(msg, "text") else str(msg.content)
+
+# Or using getattr (preferred for conciseness)
+content = getattr(result, "text", None) or str(result.content)
+
+# AVOID: Direct .content access (may return list, not string)
+text = msg.content  # ❌ Can be list[dict] or dict, not str
+```
+
+**Why this matters**: LangChain messages can have multimodal content (images, tool calls) stored as a list in `.content`. The `.text` property safely extracts only the text portion.
+
 **State Management**:
 
 - Prefer Pydantic models for state (over dataclass or TypedDict)
@@ -826,18 +844,27 @@ class Settings(BaseSettings):
 
 **Branch Naming**:
 
-- Format: `JIRA-123-description`
-- Use hyphens, not slashes (causes deployment issues)
-- Keep description short and descriptive
+- Format: `TICKET-type-description` (e.g., `CLDS-12345-feature-add-auth`)
+- **No slashes** - causes deployment issues and clutters branch lists
+- **Jira ticket required** - if no ticket, create one first
+- Types: `feature`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`
 
 ```bash
-# Good
-JIRA-123-add-user-auth
-JIRA-456-fix-login-timeout
+# Correct format
+CLDS-12345-feature-add-auth
+CLDS-12345-fix-login-timeout
+CLDS-12345-refactor-api-client
 
-# Bad - slashes cause issues
-feature/JIRA-123-add-user-auth
-fix/login-timeout
+# Wrong - has slash
+feature/CLDS-12345-add-auth  ❌
+
+# Wrong - no ticket
+feature-add-auth  ❌
+```
+
+**If no Jira ticket exists**: Create one before starting the branch:
+```bash
+acli jira workitem create --project "CLDS" --type "Task" --summary "Add user authentication"
 ```
 
 **Commit Messages (Conventional Commits)**:
@@ -924,9 +951,27 @@ When fixing PR review comments, follow this exact order for **EACH comment**:
 OWNER=$(gh repo view --json owner -q '.owner.login')
 REPO=$(gh repo view --json name -q '.name')
 
-# Reply to a specific comment
+# Reply to a specific comment (always include signature)
 gh api "repos/${OWNER}/${REPO}/pulls/${PR_NUMBER}/comments/${COMMENT_ID}/replies" \
-  -f body="Fixed: [explanation of what was changed and why]"
+  -f body="Fixed: [explanation of what was changed and why]
+
+(by Claude Code)"
+```
+
+### Resolve Thread (after replying)
+
+```bash
+# Get the thread ID from the comment
+THREAD_ID="PRRT_kwDO..."  # From GraphQL query
+
+# Resolve the thread
+gh api graphql -f query='
+  mutation($threadId: ID!) {
+    resolveReviewThread(input: {threadId: $threadId}) {
+      thread { id isResolved }
+    }
+  }
+' -f threadId="$THREAD_ID"
 ```
 
 ### Finding Comment IDs
@@ -939,16 +984,22 @@ gh api "repos/${OWNER}/${REPO}/pulls/${PR_NUMBER}/comments" \
 
 ### Reply Format
 
+**All replies must end with `(by Claude Code)` signature.**
+
 **When fixed:**
 
 ```text
 Fixed: Added input validation for user_id parameter to prevent SQL injection.
+
+(by Claude Code)
 ```
 
 **When no change needed (after asking user):**
 
 ```text
 No change needed: This validation is already handled by the Pydantic model at the API boundary (see UserRequest in models.py).
+
+(by Claude Code)
 ```
 
 ### Handling Disagreements

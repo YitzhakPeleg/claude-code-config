@@ -243,7 +243,7 @@ For each GitHub comment that was fixed:
 gh api "repos/wiliot/$PROJECT_NAME/pulls/$PR_NUMBER/comments/$COMMENT_ID/replies" \
   -f body="Fixed: [explanation of what was changed]
 
-_(comment by Claude Code)_"
+(by Claude Code)"
 ```
 
 For skipped comments:
@@ -252,7 +252,22 @@ For skipped comments:
 gh api "repos/wiliot/$PROJECT_NAME/pulls/$PR_NUMBER/comments/$COMMENT_ID/replies" \
   -f body="No change needed: [explanation]
 
-_(comment by Claude Code)_"
+(by Claude Code)"
+```
+
+### Resolve Threads After Replying
+
+After replying to a comment, resolve the thread:
+
+```bash
+# Get the thread ID from the GraphQL query earlier
+gh api graphql -f query='
+  mutation($threadId: ID!) {
+    resolveReviewThread(input: {threadId: $threadId}) {
+      thread { id isResolved }
+    }
+  }
+' -f threadId="$THREAD_ID"
 ```
 
 ### Push Changes

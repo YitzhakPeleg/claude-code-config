@@ -205,6 +205,15 @@ if [ -n "$TICKET" ]; then
 fi
 ```
 
+### Enable Auto-merge
+
+After PR creation, enable auto-merge with squash:
+
+```bash
+PR_NUMBER=$(gh pr view --json number -q '.number')
+gh pr merge $PR_NUMBER --auto --squash
+```
+
 ---
 
 ## Step 5: Output Summary
@@ -222,12 +231,42 @@ Linked:
 - Jira: CLDS-1234 ✓
 - Spec: specs/CLDS-1234/spec.md ✓
 
+Auto-merge: ✅ Enabled (squash)
+
 Next steps:
 - Review: /pr:review <PR_NUMBER>
 - Or wait for CI and reviewers
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+---
+
+## Step 6: Teams Message (Copy-Paste Ready)
+
+Output a formatted message for posting to Teams:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 Teams Message (copy-paste ready)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 **PR Ready for Review**
+
+**Title**: [CLDS-1234] Add user authentication
+**PR**: https://github.com/wiliot/REPO/pull/123
+**Jira**: https://wiliot.atlassian.net/browse/CLDS-1234
+
+Changes:
+- Key change 1
+- Key change 2
+
+Auto-merge: ✅ Enabled
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+Replace placeholders with actual values from the PR.
 
 ---
 

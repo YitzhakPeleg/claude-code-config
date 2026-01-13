@@ -232,7 +232,7 @@ Submit PR-level comment and line-level comments via GitHub API.
 **Important**: All comments submitted to GitHub must end with the signature:
 
 ```text
-_(comment by Claude Code)_
+(by Claude Code)
 ```
 
 Example for PR-level comment:
@@ -240,7 +240,7 @@ Example for PR-level comment:
 ```bash
 gh pr comment $PR_NUMBER -R wiliot/$PROJECT_NAME --body "[Review content]
 
-_(comment by Claude Code)_"
+(by Claude Code)"
 ```
 
 Example for line-level comments:
@@ -249,7 +249,7 @@ Example for line-level comments:
 gh api repos/wiliot/$PROJECT_NAME/pulls/$PR_NUMBER/comments \
   -f body="[Comment text]
 
-_(comment by Claude Code)_" \
+(by Claude Code)" \
   -f commit_id="$COMMIT_SHA" \
   -f path="$FILE_PATH" \
   -F line=$LINE_NUMBER
