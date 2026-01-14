@@ -53,9 +53,80 @@ $ARGUMENTS
 7. Create FEATURE_DIR/tasks.md with:
    - Correct feature name from implementation plan
    - Numbered tasks (T001, T002, etc.)
+   - **Story point estimates** for each task using `[Xpt]` format
    - Clear file paths for each task
    - Dependency notes
    - Parallel execution guidance
+
+8. **Create sub-tasks in tracking system**:
+
+   After generating tasks.md, create sub-tasks for each task:
+
+   a. Detect tracking backend:
+
+   ```bash
+   BACKEND=$(.specify/scripts/bash/detect-tracking-backend.sh)
+   ```
+
+   b. Extract parent ticket from branch name:
+
+   ```bash
+   BRANCH=$(git rev-parse --abbrev-ref HEAD)
+   # Branch format: CLDS-1234-feature-name or #123-feature-name
+   PARENT_TICKET=$(echo "$BRANCH" | grep -oE '^[A-Z]+-[0-9]+' || echo "")
+   PARENT_ISSUE=$(echo "$BRANCH" | grep -oE '^#?[0-9]+' | tr -d '#' || echo "")
+   ```
+
+   c. For each task in tasks.md, create sub-task:
+
+   **If BACKEND == "jira" and PARENT_TICKET exists**:
+
+   ```bash
+   # Extract project key from parent ticket (e.g., CLDS from CLDS-1234)
+   PROJECT=$(echo "$PARENT_TICKET" | grep -oE '^[A-Z]+')
+
+   # For each task line like: "- [ ] T001 [2pt] [P] Create project structure"
+   acli jira workitem create \
+     --project "$PROJECT" \
+     --type "Sub-task" \
+     --parent "$PARENT_TICKET" \
+     --summary "T001: Create project structure" \
+     --json | jq -r '.key'
+   # Returns: CLDS-1235
+   ```
+
+   **If BACKEND == "github" and PARENT_ISSUE exists**:
+
+   ```bash
+   gh issue create \
+     --title "T001: Create project structure" \
+     --body "Part of #$PARENT_ISSUE - Story points: 2pt" \
+     --label "sub-task"
+   # Returns: issue number
+   ```
+
+   d. Update tasks.md with tracking IDs:
+
+   ```markdown
+   - [ ] T001 [2pt] [P] [CLDS-1235] Create project structure
+   - [ ] T002 [3pt] [#46] Initialize project with dependencies
+   ```
+
+9. Append tracking summary to tasks.md:
+
+   ```markdown
+   ## Tracking Summary
+
+   - **Backend**: jira|github|none
+   - **Parent**: CLDS-1234 | #123
+   - **Sub-tasks created**: X
+   - **Total story points**: Ypt
+
+   | Task | Tracking ID | Points |
+   | ---- | ----------- | ------ |
+   | T001 | CLDS-1235 | 2pt |
+   | ... | ... | ... |
+   ```
 
 Context for task generation: $ARGUMENTS
 

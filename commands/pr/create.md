@@ -52,6 +52,43 @@ fi
 ISSUE_NUM=$(echo "$BRANCH" | grep -oE '#[0-9]+|issue-[0-9]+' | grep -oE '[0-9]+' || echo "")
 ```
 
+### Prompt for Ticket Creation (Ad-hoc PRs)
+
+**If no ticket/issue is detected**, prompt the user:
+
+```text
+⚠️  No Jira ticket or GitHub issue detected in branch name or commits.
+
+Would you like to:
+1. Create a Jira ticket for this PR (Wiliot repos)
+2. Create a GitHub issue for this PR (Personal repos)
+3. Proceed without a ticket (not recommended for non-trivial changes)
+```
+
+Use AskUserQuestion to get user preference. If they choose to create:
+
+```bash
+# Detect tracking backend
+BACKEND=$(.specify/scripts/bash/detect-tracking-backend.sh)
+
+if [[ "$BACKEND" == "jira" ]]; then
+    # Prompt for ticket details
+    TICKET=$(acli jira workitem create \
+        --project "CLDS" \
+        --type "Task" \
+        --summary "<PR_TITLE>" \
+        --description "<First commit message or user-provided description>" \
+        --json | jq -r '.key')
+    echo "Created Jira ticket: $TICKET"
+elif [[ "$BACKEND" == "github" ]]; then
+    ISSUE_NUM=$(gh issue create \
+        --title "<PR_TITLE>" \
+        --body "<First commit message or user-provided description>" \
+        | grep -oE '[0-9]+$')
+    echo "Created GitHub issue: #$ISSUE_NUM"
+fi
+```
+
 ### Fetch Ticket/Issue Details
 
 **If Jira ticket found:**
@@ -203,16 +240,30 @@ gh pr create \
     --base "$BASE_BRANCH"
 ```
 
-### Link to Ticket (if Jira)
+### Link to Ticket and Transition to "In Review"
 
-After PR creation, optionally add a comment to the Jira ticket:
+After PR creation, link to the ticket and transition status:
 
 ```bash
-if [ -n "$TICKET" ]; then
-    PR_URL=$(gh pr view --json url -q '.url')
+PR_URL=$(gh pr view --json url -q '.url')
+
+# Detect tracking backend
+BACKEND=$(.specify/scripts/bash/detect-tracking-backend.sh)
+
+if [[ "$BACKEND" == "jira" ]] && [ -n "$TICKET" ]; then
+    # Add comment with PR link
     acli jira workitem comment create \
         --key "$TICKET" \
         --body "PR created: $PR_URL"
+
+    # Transition to "In Review"
+    acli jira workitem transition --key "$TICKET" --status "In Review" --yes
+    echo "Ticket $TICKET transitioned to 'In Review'"
+
+elif [[ "$BACKEND" == "github" ]] && [ -n "$ISSUE_NUM" ]; then
+    # Add label for in-review status
+    gh issue edit "$ISSUE_NUM" --add-label "in-review" --remove-label "in-progress" 2>/dev/null || true
+    echo "Issue #$ISSUE_NUM labeled as 'in-review'"
 fi
 ```
 
@@ -229,7 +280,7 @@ gh pr merge $PR_NUMBER --auto --squash
 
 ## Step 5: Output Summary
 
-```
+```text
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ PR Created
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -239,10 +290,14 @@ Title: [CLDS-1234] Add user authentication
 Base: develop ← feature-branch
 
 Linked:
-- Jira: CLDS-1234 ✓
+- Jira: CLDS-1234 ✓ (Status: In Review)
 - Spec: specs/CLDS-1234/spec.md ✓
 
 Auto-merge: ✅ Enabled (squash)
+
+Status Transitions:
+- Ticket: → In Review ✓
+- On merge: → Done (automatic)
 
 Next steps:
 - Review: /pr:review <PR_NUMBER>
