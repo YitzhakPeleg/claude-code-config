@@ -131,7 +131,25 @@ Conduct a thorough review **as if you've never seen this code before**:
 - Be genuinely critical - finding nothing wrong is a failure of review
 - Consider the PR description and Jira ticket for context on intent
 
-Write the review to `.pr-review.$PROJECT_NAME.$PR_NUMBER.md`:
+Write the review to `.pr-review.$PROJECT_NAME.$PR_NUMBER.md`.
+
+**CRITICAL: After writing the review, you MUST display it to the user BEFORE proceeding.**
+
+Display the complete review:
+
+```text
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 Iteration N Review
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[Display the COMPLETE review content here - all issues, all details]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**NEVER proceed to fixes without first showing the complete review to the user.**
+
+Review format in the file:
 
 ```markdown
 ## Iteration N - Review

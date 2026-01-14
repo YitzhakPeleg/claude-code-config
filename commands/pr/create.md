@@ -156,9 +156,11 @@ Generate the PR description using this structure:
 
 ### Show Preview and Confirm
 
-Display the generated PR content to the user:
+**CRITICAL: You MUST display the COMPLETE generated PR content to the user BEFORE asking for approval.**
 
-```
+Display the FULL generated PR content (not abbreviated):
+
+```text
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📝 PR Preview
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -166,17 +168,26 @@ Display the generated PR content to the user:
 Title: [CLDS-1234] Add user authentication
 
 ## Problem
-[Generated problem description]
+[Display the COMPLETE problem description - not abbreviated]
 
 ## Solution
-[Generated solution description]
+[Display the COMPLETE solution description - not abbreviated]
 
-...
+## Changes
+[Display the COMPLETE list of changes - not abbreviated]
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Create this PR? (Y/edit/n)
+## Testing
+[Display the COMPLETE testing section - not abbreviated]
+
+## Links
+[Display the COMPLETE links section - not abbreviated]
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+**NEVER use "..." or abbreviate content. Show everything that will be submitted.**
+
+Then ask for confirmation using AskUserQuestion:
 
 Options:
 - `Y` or Enter: Create the PR

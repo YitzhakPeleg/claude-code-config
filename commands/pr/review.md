@@ -217,9 +217,25 @@ For each changed file:
 
 Write to `.pr-review.$PROJECT_NAME.$PR_NUMBER.md` (see format below).
 
-### Step 5: Ask for Approval
+### Step 5: Display Plan and Ask for Approval
 
-Ask user whether to:
+**CRITICAL: You MUST display the complete review to the user BEFORE asking for approval.**
+
+Display the full review content that was saved to the file:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 Review Plan
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[Display the COMPLETE contents of .pr-review.$PROJECT_NAME.$PR_NUMBER.md here]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**NEVER ask for approval without first showing the plan.** The user must see exactly what will be submitted.
+
+Then ask the user whether to:
 
 - **Approve**: Submit comments to GitHub
 - **Edit**: Let user modify the review file first
