@@ -110,6 +110,14 @@ check_feature_branch() {
         return 0
     fi
 
+    # CRITICAL: Reject branch names containing slashes
+    if [[ "$branch" == *"/"* ]]; then
+        echo "ERROR: Branch names must NOT contain slashes (/). Current branch: $branch" >&2
+        echo "Slashes cause deployment issues and are forbidden." >&2
+        echo "Use format: TICKET-type-description (e.g., CLDS-1234-feature-name)" >&2
+        return 1
+    fi
+
     if [[ ! "$branch" =~ ^[0-9]{3}- ]] && [[ ! "$branch" =~ ^[A-Z]+-[0-9]+ ]]; then
         echo "ERROR: Not on a feature branch. Current branch: $branch" >&2
         echo "Feature branches should be named like: 001-feature-name or CLDS-1234-feature-name" >&2
