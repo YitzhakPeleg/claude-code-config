@@ -273,9 +273,12 @@ Run the tasks workflow to generate actionable checklist:
 ```
 
 This will:
-1. Break down plan into ordered tasks
+
+1. Break down plan into ordered tasks with story point estimates
 2. Create `specs/<branch>/tasks.md`
 3. Mark dependencies and priorities
+4. **Create sub-tasks in tracking system** (Jira or GitHub Issues)
+5. Update tasks.md with tracking IDs
 
 **Checkpoint**: Show the user:
 ```
@@ -288,6 +291,11 @@ Tasks: <TASKS_FILE_PATH>
 Total tasks: X
 - Critical path: Y tasks
 - Testing: Z tasks
+- Total story points: Npt
+
+Tracking: <BACKEND> (jira|github|none)
+- Parent: <TICKET_KEY> | #<ISSUE_NUMBER>
+- Sub-tasks created: X
 
 Continue to consistency analysis? (Y/n)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -337,16 +345,31 @@ Run the implement workflow to execute tasks:
 ```
 
 This will:
-1. Work through tasks in order
-2. Write code following the plan
-3. Mark tasks complete
-4. Run linting and formatting
+
+1. **Transition ticket to "In Progress"** (Jira) or add label (GitHub)
+2. Work through tasks in order
+3. Write code following the plan
+4. Mark tasks complete
+5. Run linting and formatting
+
+**Status Transition** (at start of implementation):
+
+```bash
+# Jira
+acli jira workitem transition --key "$TICKET_KEY" --status "In Progress" --yes
+
+# GitHub
+gh issue edit $ISSUE_NUMBER --add-label "in-progress"
+```
 
 **Checkpoint**: Show the user:
+
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ Phase 6: Implementation Complete
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ticket Status: In Progress ✓
 
 Files modified: X
 Files created: Y
@@ -394,7 +417,7 @@ EOF
 git push -u origin <BRANCH_NAME>
 ```
 
-**Step 7.4: Create Pull Request**
+**Step 7.4: Create Pull Request and Transition to "In Review"**
 
 ```bash
 gh pr create --title "<TICKET_KEY>: <Summary>" --body "$(cat <<'EOF'
@@ -415,12 +438,31 @@ gh pr create --title "<TICKET_KEY>: <Summary>" --body "$(cat <<'EOF'
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
 )"
+
+# Transition ticket to "In Review"
+# Jira
+acli jira workitem transition --key "$TICKET_KEY" --status "In Review" --yes
+
+# GitHub
+gh issue edit $ISSUE_NUMBER --add-label "in-review" --remove-label "in-progress"
 ```
 
 **Step 7.5: Enable Auto-merge**
 
 ```bash
 gh pr merge <PR_NUMBER> --auto --squash
+```
+
+**Step 7.6: On PR Merge - Transition to "Done"**
+
+When auto-merge completes (or PR is manually merged):
+
+```bash
+# Jira
+acli jira workitem transition --key "$TICKET_KEY" --status "Done" --yes
+
+# GitHub
+gh issue close $ISSUE_NUMBER
 ```
 
 **Final Output**:
@@ -431,9 +473,11 @@ gh pr merge <PR_NUMBER> --auto --squash
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Feature: $ARGUMENTS
-Jira: <TICKET_KEY>
+Ticket: <TICKET_KEY> | #<ISSUE_NUMBER>
 Branch: <BRANCH_NAME>
 PR: <PR_URL>
+
+Ticket Status: In Review → Done (on merge)
 
 Artifacts:
 
@@ -446,6 +490,7 @@ Changes:
 - Files modified: X
 - Files created: Y
 - Tests added: Z
+- Sub-tasks: N
 
 Status: Auto-merge enabled ✓
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

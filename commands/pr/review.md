@@ -217,9 +217,25 @@ For each changed file:
 
 Write to `.pr-review.$PROJECT_NAME.$PR_NUMBER.md` (see format below).
 
-### Step 5: Ask for Approval
+### Step 5: Display Plan and Ask for Approval
 
-Ask user whether to:
+**CRITICAL: You MUST display the complete review to the user BEFORE asking for approval.**
+
+Display the full review content that was saved to the file:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 Review Plan
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[Display the COMPLETE contents of .pr-review.$PROJECT_NAME.$PR_NUMBER.md here]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**NEVER ask for approval without first showing the plan.** The user must see exactly what will be submitted.
+
+Then ask the user whether to:
 
 - **Approve**: Submit comments to GitHub
 - **Edit**: Let user modify the review file first
@@ -232,7 +248,7 @@ Submit PR-level comment and line-level comments via GitHub API.
 **Important**: All comments submitted to GitHub must end with the signature:
 
 ```text
-_(comment by Claude Code)_
+(by Claude Code)
 ```
 
 Example for PR-level comment:
@@ -240,7 +256,7 @@ Example for PR-level comment:
 ```bash
 gh pr comment $PR_NUMBER -R wiliot/$PROJECT_NAME --body "[Review content]
 
-_(comment by Claude Code)_"
+(by Claude Code)"
 ```
 
 Example for line-level comments:
@@ -249,7 +265,7 @@ Example for line-level comments:
 gh api repos/wiliot/$PROJECT_NAME/pulls/$PR_NUMBER/comments \
   -f body="[Comment text]
 
-_(comment by Claude Code)_" \
+(by Claude Code)" \
   -f commit_id="$COMMIT_SHA" \
   -f path="$FILE_PATH" \
   -F line=$LINE_NUMBER

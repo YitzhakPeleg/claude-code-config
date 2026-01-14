@@ -306,6 +306,66 @@ acli jira workitem edit \
   --yes
 ```
 
+### Create Sub-Tasks for Feature
+
+Used by `/feature:tasks` to create sub-tasks under a parent ticket:
+
+```bash
+# Extract project from parent ticket
+PARENT_TICKET="CLDS-1234"
+PROJECT=$(echo "$PARENT_TICKET" | grep -oE '^[A-Z]+')
+
+# Create sub-task
+SUBTASK_KEY=$(acli jira workitem create \
+  --project "$PROJECT" \
+  --type "Sub-task" \
+  --parent "$PARENT_TICKET" \
+  --summary "T001: Create project structure" \
+  --json | jq -r '.key')
+
+echo "Created sub-task: $SUBTASK_KEY"
+```
+
+### Bulk Create Sub-Tasks from tasks.md
+
+```bash
+#!/bin/bash
+PARENT_TICKET="CLDS-1234"
+PROJECT=$(echo "$PARENT_TICKET" | grep -oE '^[A-Z]+')
+
+# Parse tasks.md and create sub-tasks
+grep -E '^\- \[ \] T[0-9]+' tasks.md | while read -r line; do
+  # Extract task ID and description
+  TASK_ID=$(echo "$line" | grep -oE 'T[0-9]+')
+  SUMMARY=$(echo "$line" | sed 's/.*\] //' | sed 's/\[.*\] //')
+
+  # Create sub-task
+  KEY=$(acli jira workitem create \
+    --project "$PROJECT" \
+    --type "Sub-task" \
+    --parent "$PARENT_TICKET" \
+    --summary "$TASK_ID: $SUMMARY" \
+    --json | jq -r '.key')
+
+  echo "$TASK_ID -> $KEY"
+done
+```
+
+### Status Lifecycle Transitions
+
+Used by `/feature` workflow for automated status updates:
+
+```bash
+# When starting implementation
+acli jira workitem transition --key "CLDS-1234" --status "In Progress" --yes
+
+# When creating PR
+acli jira workitem transition --key "CLDS-1234" --status "In Review" --yes
+
+# When PR is merged
+acli jira workitem transition --key "CLDS-1234" --status "Done" --yes
+```
+
 ---
 
 ## Output Formats

@@ -200,9 +200,29 @@ Write a detailed plan to the plan file:
 6. Push to remote
 ```
 
-### Step 6: Exit Plan Mode
+### Step 6: Display Plan and Exit Plan Mode
 
-After writing the plan, use ExitPlanMode to get user approval.
+**CRITICAL: You MUST display the complete plan to the user BEFORE asking for approval.**
+
+Display the full plan content:
+
+```text
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 PR Fix Plan
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[Display the COMPLETE plan content here, including:]
+- All issues found from local review file and GitHub comments
+- For EACH issue: the current code, proposed fix, and rationale
+- The execution order
+- Any issues being skipped and why
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**NEVER ask for approval without first showing the complete plan.** The user must see exactly what changes will be made.
+
+After displaying the plan, use ExitPlanMode to get user approval.
 
 ---
 
@@ -243,7 +263,7 @@ For each GitHub comment that was fixed:
 gh api "repos/wiliot/$PROJECT_NAME/pulls/$PR_NUMBER/comments/$COMMENT_ID/replies" \
   -f body="Fixed: [explanation of what was changed]
 
-_(comment by Claude Code)_"
+(by Claude Code)"
 ```
 
 For skipped comments:
@@ -252,7 +272,22 @@ For skipped comments:
 gh api "repos/wiliot/$PROJECT_NAME/pulls/$PR_NUMBER/comments/$COMMENT_ID/replies" \
   -f body="No change needed: [explanation]
 
-_(comment by Claude Code)_"
+(by Claude Code)"
+```
+
+### Resolve Threads After Replying
+
+After replying to a comment, resolve the thread:
+
+```bash
+# Get the thread ID from the GraphQL query earlier
+gh api graphql -f query='
+  mutation($threadId: ID!) {
+    resolveReviewThread(input: {threadId: $threadId}) {
+      thread { id isResolved }
+    }
+  }
+' -f threadId="$THREAD_ID"
 ```
 
 ### Push Changes

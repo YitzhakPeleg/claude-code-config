@@ -52,6 +52,43 @@ fi
 ISSUE_NUM=$(echo "$BRANCH" | grep -oE '#[0-9]+|issue-[0-9]+' | grep -oE '[0-9]+' || echo "")
 ```
 
+### Prompt for Ticket Creation (Ad-hoc PRs)
+
+**If no ticket/issue is detected**, prompt the user:
+
+```text
+⚠️  No Jira ticket or GitHub issue detected in branch name or commits.
+
+Would you like to:
+1. Create a Jira ticket for this PR (Wiliot repos)
+2. Create a GitHub issue for this PR (Personal repos)
+3. Proceed without a ticket (not recommended for non-trivial changes)
+```
+
+Use AskUserQuestion to get user preference. If they choose to create:
+
+```bash
+# Detect tracking backend
+BACKEND=$(.specify/scripts/bash/detect-tracking-backend.sh)
+
+if [[ "$BACKEND" == "jira" ]]; then
+    # Prompt for ticket details
+    TICKET=$(acli jira workitem create \
+        --project "CLDS" \
+        --type "Task" \
+        --summary "<PR_TITLE>" \
+        --description "<First commit message or user-provided description>" \
+        --json | jq -r '.key')
+    echo "Created Jira ticket: $TICKET"
+elif [[ "$BACKEND" == "github" ]]; then
+    ISSUE_NUM=$(gh issue create \
+        --title "<PR_TITLE>" \
+        --body "<First commit message or user-provided description>" \
+        | grep -oE '[0-9]+$')
+    echo "Created GitHub issue: #$ISSUE_NUM"
+fi
+```
+
 ### Fetch Ticket/Issue Details
 
 **If Jira ticket found:**
@@ -156,9 +193,11 @@ Generate the PR description using this structure:
 
 ### Show Preview and Confirm
 
-Display the generated PR content to the user:
+**CRITICAL: You MUST display the COMPLETE generated PR content to the user BEFORE asking for approval.**
 
-```
+Display the FULL generated PR content (not abbreviated):
+
+```text
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📝 PR Preview
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -166,17 +205,26 @@ Display the generated PR content to the user:
 Title: [CLDS-1234] Add user authentication
 
 ## Problem
-[Generated problem description]
+[Display the COMPLETE problem description - not abbreviated]
 
 ## Solution
-[Generated solution description]
+[Display the COMPLETE solution description - not abbreviated]
 
-...
+## Changes
+[Display the COMPLETE list of changes - not abbreviated]
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Create this PR? (Y/edit/n)
+## Testing
+[Display the COMPLETE testing section - not abbreviated]
+
+## Links
+[Display the COMPLETE links section - not abbreviated]
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+**NEVER use "..." or abbreviate content. Show everything that will be submitted.**
+
+Then ask for confirmation using AskUserQuestion:
 
 Options:
 - `Y` or Enter: Create the PR
@@ -192,24 +240,47 @@ gh pr create \
     --base "$BASE_BRANCH"
 ```
 
-### Link to Ticket (if Jira)
+### Link to Ticket and Transition to "In Review"
 
-After PR creation, optionally add a comment to the Jira ticket:
+After PR creation, link to the ticket and transition status:
 
 ```bash
-if [ -n "$TICKET" ]; then
-    PR_URL=$(gh pr view --json url -q '.url')
+PR_URL=$(gh pr view --json url -q '.url')
+
+# Detect tracking backend
+BACKEND=$(.specify/scripts/bash/detect-tracking-backend.sh)
+
+if [[ "$BACKEND" == "jira" ]] && [ -n "$TICKET" ]; then
+    # Add comment with PR link
     acli jira workitem comment create \
         --key "$TICKET" \
         --body "PR created: $PR_URL"
+
+    # Transition to "In Review"
+    acli jira workitem transition --key "$TICKET" --status "In Review" --yes
+    echo "Ticket $TICKET transitioned to 'In Review'"
+
+elif [[ "$BACKEND" == "github" ]] && [ -n "$ISSUE_NUM" ]; then
+    # Add label for in-review status
+    gh issue edit "$ISSUE_NUM" --add-label "in-review" --remove-label "in-progress" 2>/dev/null || true
+    echo "Issue #$ISSUE_NUM labeled as 'in-review'"
 fi
+```
+
+### Enable Auto-merge
+
+After PR creation, enable auto-merge with squash:
+
+```bash
+PR_NUMBER=$(gh pr view --json number -q '.number')
+gh pr merge $PR_NUMBER --auto --squash
 ```
 
 ---
 
 ## Step 5: Output Summary
 
-```
+```text
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ PR Created
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -219,8 +290,14 @@ Title: [CLDS-1234] Add user authentication
 Base: develop ← feature-branch
 
 Linked:
-- Jira: CLDS-1234 ✓
+- Jira: CLDS-1234 ✓ (Status: In Review)
 - Spec: specs/CLDS-1234/spec.md ✓
+
+Auto-merge: ✅ Enabled (squash)
+
+Status Transitions:
+- Ticket: → In Review ✓
+- On merge: → Done (automatic)
 
 Next steps:
 - Review: /pr:review <PR_NUMBER>
@@ -228,6 +305,34 @@ Next steps:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
+
+---
+
+## Step 6: Teams Message (Copy-Paste Ready)
+
+Output a formatted message for posting to Teams:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 Teams Message (copy-paste ready)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 **PR Ready for Review**
+
+**Title**: [CLDS-1234] Add user authentication
+**PR**: https://github.com/wiliot/REPO/pull/123
+**Jira**: https://wiliot.atlassian.net/browse/CLDS-1234
+
+Changes:
+- Key change 1
+- Key change 2
+
+Auto-merge: ✅ Enabled
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+Replace placeholders with actual values from the PR.
 
 ---
 

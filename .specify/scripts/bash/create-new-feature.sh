@@ -97,6 +97,14 @@ FEATURE_NUM=$(printf "%03d" "$NEXT")
 
 # If custom name provided, validate and use it; otherwise auto-generate
 if [ -n "$CUSTOM_NAME" ]; then
+    # CRITICAL: Reject branch names containing slashes
+    if echo "$CUSTOM_NAME" | grep -q '/'; then
+        echo "Error: Branch names must NOT contain slashes (/)" >&2
+        echo "       Slashes cause deployment issues and are forbidden." >&2
+        echo "       Use format: TICKET-type-description (e.g., CLDS-1234-feature-name)" >&2
+        exit 1
+    fi
+
     # Validate custom name format - supports both:
     # - Ticket-based: CLDS-1234-feature-name, PROJ-999-feature-name
     # - Sequential: 001-feature-name, 005-feature-name
