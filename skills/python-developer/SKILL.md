@@ -459,9 +459,6 @@ async def process_request(request_id: str, user_id: str) -> Result:
 ```python
 import asyncio
 from collections.abc import Callable, Awaitable
-from typing import TypeVar
-
-T = TypeVar("T")
 
 async def retry_with_backoff[T](
     func: Callable[[], Awaitable[T]],

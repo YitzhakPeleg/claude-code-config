@@ -74,7 +74,7 @@ $ARGUMENTS
    BRANCH=$(git rev-parse --abbrev-ref HEAD)
    # Branch format: CLDS-1234-feature-name or #123-feature-name
    PARENT_TICKET=$(echo "$BRANCH" | grep -oE '^[A-Z]+-[0-9]+' || echo "")
-   PARENT_ISSUE=$(echo "$BRANCH" | grep -oE '^#?[0-9]+' | tr -d '#' || echo "")
+   PARENT_ISSUE=$(echo "$BRANCH" | grep -oE '^#[0-9]+' | tr -d '#' || echo "")
    ```
 
    c. For each task in tasks.md, create sub-task:

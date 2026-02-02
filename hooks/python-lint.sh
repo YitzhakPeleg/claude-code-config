@@ -2,7 +2,9 @@
 # PostToolUse hook: Run ruff lint after Python file edits
 # Non-blocking (exit 0) - reports issues but doesn't stop Claude
 
-FILE_PATH="$CLAUDE_FILE_PATH"
+set -uo pipefail  # No -e since we always exit 0
+
+FILE_PATH="${CLAUDE_FILE_PATH:-}"
 
 # Only process Python files
 [[ "$FILE_PATH" != *.py ]] && exit 0

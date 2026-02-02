@@ -21,7 +21,7 @@ $ARGUMENTS
    # Extract ticket from branch name
    BRANCH=$(git rev-parse --abbrev-ref HEAD)
    TICKET_KEY=$(echo "$BRANCH" | grep -oE '^[A-Z]+-[0-9]+' || echo "")
-   ISSUE_NUMBER=$(echo "$BRANCH" | grep -oE '^#?[0-9]+' | tr -d '#' || echo "")
+   ISSUE_NUMBER=$(echo "$BRANCH" | grep -oE '^#[0-9]+' | tr -d '#' || echo "")
 
    # Transition based on backend
    if [[ "$BACKEND" == "jira" ]] && [[ -n "$TICKET_KEY" ]]; then

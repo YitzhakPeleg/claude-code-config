@@ -16,10 +16,6 @@
 
 set -euo pipefail
 
-# Source common functions
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$SCRIPT_DIR/common.sh"
-
 # Known Wiliot organization patterns in git remotes
 WILIOT_PATTERNS=(
     "wiliot"
@@ -27,12 +23,19 @@ WILIOT_PATTERNS=(
     "wiliot-com"
 )
 
-# Known personal GitHub patterns (add more as needed)
-PERSONAL_PATTERNS=(
-    "YitzhakPeleg"
-    "yitzhak-peleg"
-    "yitzhakp"
-)
+# Personal patterns are determined dynamically from git config or env
+# Override with GITHUB_PERSONAL_PATTERNS env var (comma-separated)
+get_personal_patterns() {
+    if [[ -n "${GITHUB_PERSONAL_PATTERNS:-}" ]]; then
+        IFS=',' read -ra patterns <<< "$GITHUB_PERSONAL_PATTERNS"
+        printf '%s\n' "${patterns[@]}"
+    else
+        # Try to get GitHub username from gh CLI
+        if command -v gh &>/dev/null && gh auth status &>/dev/null 2>&1; then
+            gh api user -q '.login' 2>/dev/null || true
+        fi
+    fi
+}
 
 detect_tracking_backend() {
     local remote_url=""
@@ -53,13 +56,14 @@ detect_tracking_backend() {
         fi
     done
 
-    # Check for personal patterns (explicitly)
-    for pattern in "${PERSONAL_PATTERNS[@]}"; do
+    # Check for personal patterns (dynamically determined)
+    while IFS= read -r pattern; do
+        [[ -z "$pattern" ]] && continue
         if [[ "$remote_url" == *"$pattern"* ]]; then
             echo "github"
             return 0
         fi
-    done
+    done < <(get_personal_patterns)
 
     # Default: if it's GitHub but not Wiliot, assume personal
     if [[ "$remote_url" == *"github.com"* ]] || [[ "$remote_url" == *"github-"* ]]; then
@@ -86,13 +90,24 @@ json_output() {
         remote_url=$(git remote get-url origin)
     fi
 
-    cat <<EOF
+    # Use jq if available for proper JSON escaping, otherwise escape manually
+    if command -v jq &>/dev/null; then
+        jq -n \
+            --arg backend "$backend" \
+            --arg remote_url "$remote_url" \
+            '{backend: $backend, remote_url: $remote_url, detection_method: "pattern_matching"}'
+    else
+        # Manual escaping for JSON special characters
+        remote_url="${remote_url//\\/\\\\}"  # Escape backslashes first
+        remote_url="${remote_url//\"/\\\"}"  # Escape quotes
+        cat <<EOF
 {
   "backend": "$backend",
   "remote_url": "$remote_url",
   "detection_method": "pattern_matching"
 }
 EOF
+    fi
 }
 
 # Main execution
