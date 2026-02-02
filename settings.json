@@ -28,7 +28,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/workspace/.claude/hooks/python-lint.sh"
+            "command": "hooks/python-lint.sh"
           }
         ]
       }

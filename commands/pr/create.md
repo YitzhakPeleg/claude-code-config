@@ -67,14 +67,17 @@ Would you like to:
 
 Use AskUserQuestion to get user preference. If they choose to create:
 
+**For Jira**: Also ask which project to use (common options: CLDS, INF, PLAT). Store in `$JIRA_PROJECT`.
+
 ```bash
 # Detect tracking backend
 BACKEND=$(.specify/scripts/bash/detect-tracking-backend.sh)
 
 if [[ "$BACKEND" == "jira" ]]; then
-    # Prompt for ticket details
+    # Prompt user for Jira project (use AskUserQuestion with common options)
+    # Default to CLDS for Cloud Services, but allow user to specify
     TICKET=$(acli jira workitem create \
-        --project "CLDS" \
+        --project "$JIRA_PROJECT" \
         --type "Task" \
         --summary "<PR_TITLE>" \
         --description "<First commit message or user-provided description>" \
