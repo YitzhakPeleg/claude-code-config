@@ -26,7 +26,7 @@ acli jira workitem create \
   --project "CLDS" \
   --type "Task" \
   --summary "Ticket summary here" \
-  --description "Detailed description (supports markdown)"
+  --description "Detailed description (plain text only - see Rich Text Formatting section)"
 
 # With additional options
 acli jira workitem create \
@@ -51,7 +51,7 @@ acli jira workitem create \
 | `--project`, `-p` | Project key (e.g., "CLDS", "INF") - **required** |
 | `--type`, `-t` | Work item type: Task, Bug, Story, Epic - **required** |
 | `--summary`, `-s` | Ticket title - **required** |
-| `--description`, `-d` | Detailed description (markdown supported) |
+| `--description`, `-d` | Detailed description (plain text - formatting not rendered) |
 | `--assignee`, `-a` | Email, account ID, `@me`, or `default` |
 | `--label`, `-l` | Comma-separated labels |
 | `--parent` | Parent work item ID (for subtasks) |
@@ -395,6 +395,16 @@ acli jira workitem view CLDS-123 --json | jq -r '.fields.assignee.emailAddress'
 | "project not found" | Invalid project key | Use `acli jira project list` to find valid keys |
 | "transition not valid" | Invalid status transition | Check available transitions for current status |
 | "not authenticated" | Auth expired/missing | Rerun `acli jira auth login` or restart devcontainer |
+| "401 Unauthorized" | Token expired/invalid | Restart devcontainer or re-authenticate |
+| "field not found" | Invalid field name | Use `acli jira field list` to discover correct field IDs |
+
+### 401 Recovery
+
+If you receive a 401 Unauthorized error:
+
+1. **First**: Try the command again (token may auto-refresh)
+2. **If persistent**: Restart the devcontainer (rebuilds auth context)
+3. **Manual auth**: Run `acli jira auth login` if available
 
 ---
 
@@ -405,3 +415,274 @@ acli jira workitem view CLDS-123 --json | jq -r '.fields.assignee.emailAddress'
 - Use `--yes` / `-y` to skip confirmation prompts in scripts
 - Multi-line descriptions work directly in the `--description` string
 - Authentication is automatic in devcontainer via `ATLASSIAN_*` env vars
+
+### Shell Escaping
+
+When passing strings to `--description` or `--summary`:
+
+```bash
+# Use double quotes for strings with special characters
+acli jira workitem create --summary "Fix \"login\" bug" --description "Users can't login"
+
+# Use heredoc for complex multi-line content
+acli jira workitem comment create --key "CLDS-123" --body "$(cat <<'EOF'
+## Summary
+This is a multi-line comment with:
+- Bullet points
+- Code: `function()`
+- Special chars: $PATH
+
+*(Created by Claude Code)*
+EOF
+)"
+```
+
+---
+
+## Rich Text Formatting (ADF)
+
+Jira uses **Atlassian Document Format (ADF)** for rich text. You can pass ADF JSON directly to `--description` or `--description-file` to create formatted content.
+
+### What Works with `--description` / `--description-file`
+
+| ADF Element | Works? | Notes |
+|-------------|--------|-------|
+| `paragraph` | ✅ Yes | Basic text paragraphs |
+| `bulletList` | ✅ Yes | Unordered lists render correctly |
+| `orderedList` | ✅ Yes | Numbered lists render correctly |
+| `codeBlock` | ✅ Yes | Code blocks work (language attr may be stripped) |
+| `blockquote` | ✅ Yes | Quote blocks render correctly |
+| `rule` | ✅ Yes | Horizontal lines work |
+| `heading` | ❌ No | Returns `INVALID_INPUT` error |
+| `panel` | ❌ No | Returns `INVALID_INPUT` error |
+| Text `marks` | ❌ No | Bold/italic/code marks are stripped |
+
+### Using ADF for Descriptions
+
+**Inline ADF** (simple cases):
+
+```bash
+acli jira workitem create \
+  --project "CLDS" \
+  --type "Task" \
+  --summary "My Task" \
+  --description '{"version":1,"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Description text"}]}]}'
+```
+
+**ADF from file** (recommended for complex content):
+
+```bash
+# Create ADF file
+cat > description.json << 'EOF'
+{"version":1,"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"This task includes:"}]},{"type":"bulletList","content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Item 1"}]}]},{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Item 2"}]}]}]},{"type":"codeBlock","content":[{"type":"text","text":"def example():\n    return True"}]}]}
+EOF
+
+# Use with --description-file
+acli jira workitem create \
+  --project "CLDS" \
+  --type "Task" \
+  --summary "My Task" \
+  --description-file description.json
+```
+
+### Full ADF Support via Comment Update
+
+For **headings, panels, and text formatting (bold/italic)**, use `comment update --body-adf`:
+
+```bash
+# Create placeholder comment
+acli jira workitem comment create --key "CLDS-123" --body "Updating..."
+
+# Get the comment ID
+COMMENT_ID=$(acli jira workitem comment list --key "CLDS-123" --json | jq -r '.comments[-1].id')
+
+# Update with full ADF support (including headings and marks)
+acli jira workitem comment update --key "CLDS-123" --id "$COMMENT_ID" --body-adf comment.json
+```
+
+### ADF Templates
+
+**Working description template** (lists + code + quote):
+
+```json
+{"version":1,"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Description:"}]},{"type":"bulletList","content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Requirement 1"}]}]},{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Requirement 2"}]}]}]},{"type":"codeBlock","content":[{"type":"text","text":"# Code example\nprint('hello')"}]},{"type":"blockquote","content":[{"type":"paragraph","content":[{"type":"text","text":"Note: Important information"}]}]},{"type":"paragraph","content":[{"type":"text","text":"(Created by Claude Code)"}]}]}
+```
+
+**Full comment template** (with headings - use with `--body-adf`):
+
+```json
+{"version":1,"type":"doc","content":[{"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Summary"}]},{"type":"paragraph","content":[{"type":"text","text":"Work completed."}]},{"type":"heading","attrs":{"level":3},"content":[{"type":"text","text":"Changes"}]},{"type":"bulletList","content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Change 1"}]}]},{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Change 2"}]}]}]},{"type":"paragraph","content":[{"type":"text","text":"(Created by Claude Code)","marks":[{"type":"em"}]}]}]}
+```
+
+---
+
+## AI Attribution
+
+When Claude Code creates or updates Jira content (descriptions, comments), **always include this signature as the final line**:
+
+```text
+*(Created by Claude Code)*
+```
+
+This ensures:
+
+- Clear audit trail for AI-generated content
+- Easy filtering/searching of AI-assisted tickets
+- Transparency about content origin
+
+**Example**:
+
+```bash
+acli jira workitem create \
+  --project "CLDS" \
+  --type "Task" \
+  --summary "Implement user authentication" \
+  --description "Add JWT-based authentication to the API endpoints.
+
+## Requirements
+- Token expiration: 24 hours
+- Refresh token support
+- Rate limiting
+
+*(Created by Claude Code)*"
+```
+
+---
+
+## Execution Protocol
+
+Follow these best practices for safe and effective Jira operations:
+
+### 1. Validate Before Update
+
+Always verify a ticket exists before attempting updates:
+
+```bash
+# Check ticket exists and get current state
+acli jira workitem view CLDS-12345 --fields "key,status,summary"
+
+# Then perform update
+acli jira workitem edit --key "CLDS-12345" --description "Updated content"
+```
+
+### 2. Search Context First
+
+If the user mentions a task without providing a ticket key, search via JQL first:
+
+```bash
+# Find relevant tickets by keyword
+acli jira workitem search \
+  --jql "project = CLDS AND summary ~ 'authentication' ORDER BY updated DESC" \
+  --limit 5 \
+  --fields "key,summary,status"
+```
+
+### 3. Confirm Destructive Actions
+
+For delete operations or bulk changes, **always show the command and ask for confirmation** before executing:
+
+```bash
+# Show what will be affected
+acli jira workitem search --jql "project = CLDS AND labels = deprecated" --count
+
+# Then ask user to confirm before:
+acli jira workitem delete --jql "project = CLDS AND labels = deprecated" --yes
+```
+
+### 4. Pre-flight Connection Check
+
+If you encounter connection issues, verify connectivity:
+
+```bash
+# Verify Jira connection is active
+acli jira project view CLDS
+```
+
+---
+
+## Custom Fields
+
+### Discovering Custom Fields
+
+When a standard field name doesn't work, discover the correct field ID:
+
+```bash
+# List all available fields
+acli jira field list
+
+# Search for specific field
+acli jira field list | grep -i "story points"
+# Output: customfield_10023  Story Points  number
+```
+
+### Using Custom Fields
+
+```bash
+# Set custom field value
+acli jira workitem edit --key "CLDS-123" --field "customfield_10023=5"
+
+# Multiple custom fields
+acli jira workitem create \
+  --project "CLDS" \
+  --type "Story" \
+  --summary "New feature" \
+  --field "customfield_10023=8" \
+  --field "customfield_10024=Team Alpha"
+```
+
+---
+
+## Feature Workflow Example
+
+Complete end-to-end example for feature development:
+
+```bash
+#!/bin/bash
+# Feature workflow: Create ticket → Work → Review → Done
+
+# 1. Create the ticket
+TICKET=$(acli jira workitem create \
+  --project "CLDS" \
+  --type "Task" \
+  --summary "Implement user preferences API" \
+  --description "Add REST endpoints for user preferences management.
+
+## Acceptance Criteria
+- GET /api/preferences - fetch user prefs
+- PUT /api/preferences - update user prefs
+- Preferences stored in PostgreSQL
+
+*(Created by Claude Code)*" \
+  --assignee "@me" \
+  --json | jq -r '.key')
+
+echo "Created: $TICKET"
+
+# 2. Start work - transition to In Progress
+acli jira workitem transition --key "$TICKET" --status "In Progress" --yes
+
+# 3. Create feature branch
+git checkout -b "feature/${TICKET}-user-preferences"
+
+# ... development happens ...
+
+# 4. Add implementation notes
+acli jira workitem comment create --key "$TICKET" --body "Implementation complete:
+- Added PreferencesController with GET/PUT endpoints
+- Created preferences table migration
+- Added unit tests (100% coverage)
+
+PR ready for review.
+
+*(Created by Claude Code)*"
+
+# 5. Ready for review - transition status
+acli jira workitem transition --key "$TICKET" --status "In Review" --yes
+
+# ... PR review and merge ...
+
+# 6. Complete - transition to Done
+acli jira workitem transition --key "$TICKET" --status "Done" --yes
+
+echo "Workflow complete for $TICKET"
+```
