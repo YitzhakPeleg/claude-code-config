@@ -398,17 +398,6 @@ acli jira workitem view CLDS-123 --json | jq -r '.fields.assignee.emailAddress'
 | "401 Unauthorized" | Token expired/invalid | Restart devcontainer or re-authenticate |
 | "field not found" | Invalid field name | Use `acli jira field list` to discover correct field IDs |
 
-### Connection Verification
-
-If you suspect connection issues, verify connectivity:
-
-```bash
-# Quick connectivity test
-acli jira project view CLDS
-
-# If this fails, try re-authenticating or restart devcontainer
-```
-
 ### 401 Recovery
 
 If you receive a 401 Unauthorized error:

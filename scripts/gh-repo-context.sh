@@ -2,11 +2,11 @@
 # gh-repo-context.sh - Detect repository context and optionally switch accounts
 #
 # Usage:
-#   source .claude/scripts/gh-repo-context.sh
+#   source scripts/gh-repo-context.sh
 #   # Then use: $REPO_OWNER, $REPO_NAME, $DEFAULT_BRANCH
 #
 # With account switching:
-#   COMPANY_HANDLE="wiliot" PERSONAL_HANDLE="myuser" source .claude/scripts/gh-repo-context.sh
+#   COMPANY_HANDLE="wiliot" PERSONAL_HANDLE="myuser" source scripts/gh-repo-context.sh
 #
 # Output variables:
 #   REPO_OWNER      - Repository owner (org or user)
@@ -16,27 +16,35 @@
 
 set -euo pipefail
 
+# Check for required dependencies
+if ! command -v jq &> /dev/null; then
+    echo "ERROR: jq is required but not installed" >&2
+    exit 1
+fi
+
 # Get repository info
-REPO_JSON=$(gh repo view --json owner,name,defaultBranchRef --jq '{owner: .owner.login, name: .name, branch: .defaultBranchRef.name}' 2>/dev/null) || {
+REPO_JSON=$(gh repo view --json owner,name,defaultBranchRef 2>/dev/null) || {
     echo "ERROR: Not in a git repository or gh not authenticated" >&2
     exit 1
 }
 
-# Export context variables
-export REPO_OWNER=$(echo "$REPO_JSON" | jq -r '.owner')
+# Export context variables (single jq call with multiple outputs)
+export REPO_OWNER=$(echo "$REPO_JSON" | jq -r '.owner.login')
 export REPO_NAME=$(echo "$REPO_JSON" | jq -r '.name')
-export DEFAULT_BRANCH=$(echo "$REPO_JSON" | jq -r '.branch')
+export DEFAULT_BRANCH=$(echo "$REPO_JSON" | jq -r '.defaultBranchRef.name')
 export REPO_FULL="${REPO_OWNER}/${REPO_NAME}"
 
 # Account switching (optional)
 # Set COMPANY_HANDLE and PERSONAL_HANDLE env vars to enable
 if [[ -n "${COMPANY_HANDLE:-}" ]] && [[ -n "${PERSONAL_HANDLE:-}" ]]; then
     if [[ "$REPO_OWNER" == "$COMPANY_HANDLE" ]]; then
-        gh auth switch --user "$COMPANY_HANDLE" 2>/dev/null || true
-        echo "AUTH: Switched to company account ($COMPANY_HANDLE)" >&2
+        if gh auth switch --user "$COMPANY_HANDLE" 2>/dev/null; then
+            echo "AUTH: Switched to company account ($COMPANY_HANDLE)"
+        fi
     else
-        gh auth switch --user "$PERSONAL_HANDLE" 2>/dev/null || true
-        echo "AUTH: Switched to personal account ($PERSONAL_HANDLE)" >&2
+        if gh auth switch --user "$PERSONAL_HANDLE" 2>/dev/null; then
+            echo "AUTH: Switched to personal account ($PERSONAL_HANDLE)"
+        fi
     fi
 fi
 

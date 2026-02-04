@@ -59,7 +59,7 @@ Before PR/issue operations, detect the current repository context using the help
 
 ```bash
 # Source the script to get context variables
-source .claude/scripts/gh-repo-context.sh
+source scripts/gh-repo-context.sh
 
 # Available variables after sourcing:
 echo "Owner: $REPO_OWNER"          # e.g., "wiliot"
@@ -72,7 +72,7 @@ echo "Default branch: $DEFAULT_BRANCH"  # e.g., "develop"
 
 ```bash
 # Set account handles, then source
-COMPANY_HANDLE="wiliot" PERSONAL_HANDLE="myuser" source .claude/scripts/gh-repo-context.sh
+COMPANY_HANDLE="wiliot" PERSONAL_HANDLE="myuser" source scripts/gh-repo-context.sh
 # Automatically switches to correct account based on repo owner
 ```
 
@@ -137,7 +137,7 @@ Users cannot reset passwords.
 Added password reset flow with email verification.
 
 ---
-(by Claude Code)
+*(Created by Claude Code)*
 EOF
 )"
 
@@ -199,7 +199,7 @@ gh pr diff 123 -R owner/repo
 # Add comment to PR
 gh pr comment 123 --body "Comment text here
 
-(by Claude Code)"
+*(Created by Claude Code)*"
 
 # Comment on different repo
 gh pr comment 123 -R owner/repo --body "..."
@@ -215,7 +215,7 @@ COMMIT_SHA=$(gh pr view 123 --json headRefOid -q '.headRefOid')
 gh api repos/owner/repo/pulls/123/comments \
   -f body="Issue: Missing null check here.
 
-(by Claude Code)" \
+*(Created by Claude Code)*" \
   -f commit_id="$COMMIT_SHA" \
   -f path="src/file.py" \
   -F line=42
@@ -239,7 +239,7 @@ gh api repos/owner/repo/pulls/123/comments \
 gh api repos/owner/repo/pulls/123/comments/COMMENT_ID/replies \
   -f body="Fixed: Added null check.
 
-(by Claude Code)"
+*(Created by Claude Code)*"
 ```
 
 ---
@@ -392,7 +392,7 @@ gh issue edit 456 --add-assignee "username"
 ```bash
 gh issue comment 456 --body "Update: PR created.
 
-(by Claude Code)"
+*(Created by Claude Code)*"
 ```
 
 ---
@@ -543,7 +543,7 @@ query($owner: String!, $repo: String!, $pr: Int!) {
 
 # 1. Extract ticket from branch name
 BRANCH=$(git branch --show-current)
-TICKET=$(echo "$BRANCH" | grep -oE '^[A-Z]+-[0-9]+' || echo "")
+TICKET=$(echo "$BRANCH" | grep -oE '[A-Z]+-[0-9]+' | head -1 || echo "")
 
 # 2. Get base branch
 BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "develop")
@@ -623,7 +623,7 @@ gh pr list --state open --json number,createdAt --limit 100 | \
     echo "Closing PR #$pr"
     gh pr close $pr --comment "Closing due to inactivity.
 
-(by Claude Code)"
+*(Created by Claude Code)*"
   done
 ```
 
@@ -673,7 +673,7 @@ gh pr list --json number,title -q '.[] | "\(.number): \(.title)"'
 - **Authentication**: `gh auth login` uses OAuth. Tokens are stored securely.
 - **Check auth status**: `gh auth status`
 - **Cross-repo operations**: Always use `-R owner/repo` for repos you're not in
-- **Signature**: All automated comments should end with `(by Claude Code)`
+- **Signature**: All automated comments should end with `*(Created by Claude Code)*`
 - **JSON fields**: Use `gh <command> --help` to see available JSON fields
 - **Rate limits**: GitHub API has rate limits. Use `--limit` to control batch sizes
 - **Pagination**: Large result sets may be paginated. Use `--limit` or GraphQL for control
