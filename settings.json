@@ -31,6 +31,15 @@
             "command": "hooks/python-lint.sh"
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "hooks/markdown-format.sh"
+          }
+        ]
       }
     ]
   }

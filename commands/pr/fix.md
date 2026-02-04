@@ -62,7 +62,69 @@ fi
 
 **Important**: If using worktree (`$WORKTREE_PATH` is set), all file operations (read, edit, lint, commit, push) must be done from `$WORKTREE_PATH`.
 
-### Step 2: Gather Issues from All Sources
+### Step 2: Check for Merge Conflicts
+
+**Before addressing any review comments**, check if the branch has merge conflicts with the base branch:
+
+```bash
+# Get base branch
+BASE_BRANCH=$(gh pr view $PR_NUMBER -R wiliot/$PROJECT_NAME --json baseRefName -q '.baseRefName')
+
+# Fetch latest base branch
+git fetch origin $BASE_BRANCH
+
+# Check for merge conflicts by attempting a merge (without committing)
+git merge --no-commit --no-ff origin/$BASE_BRANCH 2>&1 || MERGE_STATUS=$?
+
+if [ -n "$MERGE_STATUS" ]; then
+    # Conflicts detected - list them
+    echo "⚠️ Merge conflicts detected with $BASE_BRANCH:"
+    git diff --name-only --diff-filter=U
+    git merge --abort
+else
+    # No conflicts - abort the test merge
+    git merge --abort 2>/dev/null || true
+    echo "✅ No merge conflicts with $BASE_BRANCH"
+fi
+```
+
+#### If Merge Conflicts Exist
+
+**STOP and resolve merge conflicts FIRST before proceeding to review comments.**
+
+1. **Analyze the conflicts**:
+
+   ```bash
+   # Show what files conflict
+   git merge --no-commit --no-ff origin/$BASE_BRANCH 2>&1 || true
+   git diff --name-only --diff-filter=U
+
+   # For each conflicting file, show the conflict markers
+   git diff
+   ```
+
+2. **Include conflict resolution in the plan**:
+   - List each conflicting file
+   - Show the conflicting sections (HEAD vs incoming)
+   - Propose how to resolve each conflict
+   - This MUST be addressed before any review comment fixes
+
+3. **Resolve conflicts during execution**:
+   - Edit each file to resolve conflicts
+   - Remove conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`)
+   - Run lint/format
+   - Commit the merge resolution:
+
+     ```bash
+     git add -A
+     git commit -m "chore: resolve merge conflicts with $BASE_BRANCH"
+     ```
+
+   - Push the resolution before proceeding
+
+**Important**: Do NOT proceed to review comments until merge conflicts are resolved and pushed.
+
+### Step 3: Gather Issues from All Sources
 
 #### Source 1: Local Review File
 
@@ -118,14 +180,14 @@ query {
 
 Filter to only **unresolved** threads. Also exclude comments that already have replies from the PR author (likely already addressed).
 
-### Step 3: Deduplicate and Merge Issues
+### Step 4: Deduplicate and Merge Issues
 
 Combine issues from both sources:
 - Remove duplicates (same file + line + similar issue)
 - Keep GitHub comment IDs for reply tracking
 - Preserve severity classifications
 
-### Step 4: Analyze Each Issue
+### Step 5: Analyze Each Issue
 
 For each unique issue:
 
@@ -137,7 +199,7 @@ For each unique issue:
    - **Important (🟡)**: Missing types, error handling, performance
    - **Suggestion (🟢)**: Style, minor improvements (non-blocking)
 
-### Step 5: Write the Fix Plan
+### Step 6: Write the Fix Plan
 
 Write a detailed plan to the plan file:
 
@@ -200,7 +262,7 @@ Write a detailed plan to the plan file:
 6. Push to remote
 ```
 
-### Step 6: Display Plan and Exit Plan Mode
+### Step 7: Display Plan and Exit Plan Mode
 
 **CRITICAL: You MUST display the complete plan to the user BEFORE asking for approval.**
 
@@ -345,6 +407,7 @@ GitHub comments replied: ✅
 ## Important Notes
 
 - **Plan mode is mandatory** - always show the plan and wait for approval
+- **Resolve merge conflicts FIRST** - before addressing any review comments, check for and resolve conflicts with the base branch
 - Check BOTH local review file AND GitHub comments
 - Deduplicate issues that appear in both sources
 - Always reply to GitHub comments after fixing
