@@ -26,7 +26,7 @@ acli jira workitem create \
   --project "CLDS" \
   --type "Task" \
   --summary "Ticket summary here" \
-  --description "Detailed description (supports markdown)"
+  --description "Detailed description (plain text only - see Rich Text Formatting section)"
 
 # With additional options
 acli jira workitem create \
@@ -51,7 +51,7 @@ acli jira workitem create \
 | `--project`, `-p` | Project key (e.g., "CLDS", "INF") - **required** |
 | `--type`, `-t` | Work item type: Task, Bug, Story, Epic - **required** |
 | `--summary`, `-s` | Ticket title - **required** |
-| `--description`, `-d` | Detailed description (markdown supported) |
+| `--description`, `-d` | Detailed description (plain text - formatting not rendered) |
 | `--assignee`, `-a` | Email, account ID, `@me`, or `default` |
 | `--label`, `-l` | Comma-separated labels |
 | `--parent` | Parent work item ID (for subtasks) |
@@ -435,6 +435,83 @@ This is a multi-line comment with:
 *(Created by Claude Code)*
 EOF
 )"
+```
+
+---
+
+## Rich Text Formatting (ADF)
+
+Jira uses **Atlassian Document Format (ADF)** for rich text. You can pass ADF JSON directly to `--description` or `--description-file` to create formatted content.
+
+### What Works with `--description` / `--description-file`
+
+| ADF Element | Works? | Notes |
+|-------------|--------|-------|
+| `paragraph` | ✅ Yes | Basic text paragraphs |
+| `bulletList` | ✅ Yes | Unordered lists render correctly |
+| `orderedList` | ✅ Yes | Numbered lists render correctly |
+| `codeBlock` | ✅ Yes | Code blocks work (language attr may be stripped) |
+| `blockquote` | ✅ Yes | Quote blocks render correctly |
+| `rule` | ✅ Yes | Horizontal lines work |
+| `heading` | ❌ No | Returns `INVALID_INPUT` error |
+| `panel` | ❌ No | Returns `INVALID_INPUT` error |
+| Text `marks` | ❌ No | Bold/italic/code marks are stripped |
+
+### Using ADF for Descriptions
+
+**Inline ADF** (simple cases):
+
+```bash
+acli jira workitem create \
+  --project "CLDS" \
+  --type "Task" \
+  --summary "My Task" \
+  --description '{"version":1,"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Description text"}]}]}'
+```
+
+**ADF from file** (recommended for complex content):
+
+```bash
+# Create ADF file
+cat > description.json << 'EOF'
+{"version":1,"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"This task includes:"}]},{"type":"bulletList","content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Item 1"}]}]},{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Item 2"}]}]}]},{"type":"codeBlock","content":[{"type":"text","text":"def example():\n    return True"}]}]}
+EOF
+
+# Use with --description-file
+acli jira workitem create \
+  --project "CLDS" \
+  --type "Task" \
+  --summary "My Task" \
+  --description-file description.json
+```
+
+### Full ADF Support via Comment Update
+
+For **headings, panels, and text formatting (bold/italic)**, use `comment update --body-adf`:
+
+```bash
+# Create placeholder comment
+acli jira workitem comment create --key "CLDS-123" --body "Updating..."
+
+# Get the comment ID
+COMMENT_ID=$(acli jira workitem comment list --key "CLDS-123" --json | jq -r '.comments[-1].id')
+
+# Update with full ADF support (including headings and marks)
+acli jira workitem comment update --key "CLDS-123" --id "$COMMENT_ID" --body-adf comment.json
+```
+
+### ADF Templates
+
+**Working description template** (lists + code + quote):
+
+```json
+{"version":1,"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Description:"}]},{"type":"bulletList","content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Requirement 1"}]}]},{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Requirement 2"}]}]}]},{"type":"codeBlock","content":[{"type":"text","text":"# Code example\nprint('hello')"}]},{"type":"blockquote","content":[{"type":"paragraph","content":[{"type":"text","text":"Note: Important information"}]}]},{"type":"paragraph","content":[{"type":"text","text":"(Created by Claude Code)"}]}]}
+```
+
+**Full comment template** (with headings - use with `--body-adf`):
+
+```json
+{"version":1,"type":"doc","content":[{"type":"heading","attrs":{"level":2},"content":[{"type":"text","text":"Summary"}]},{"type":"paragraph","content":[{"type":"text","text":"Work completed."}]},{"type":"heading","attrs":{"level":3},"content":[{"type":"text","text":"Changes"}]},{"type":"bulletList","content":[{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Change 1"}]}]},{"type":"listItem","content":[{"type":"paragraph","content":[{"type":"text","text":"Change 2"}]}]}]},{"type":"paragraph","content":[{"type":"text","text":"(Created by Claude Code)","marks":[{"type":"em"}]}]}]}
 ```
 
 ---
