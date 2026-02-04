@@ -395,6 +395,27 @@ acli jira workitem view CLDS-123 --json | jq -r '.fields.assignee.emailAddress'
 | "project not found" | Invalid project key | Use `acli jira project list` to find valid keys |
 | "transition not valid" | Invalid status transition | Check available transitions for current status |
 | "not authenticated" | Auth expired/missing | Rerun `acli jira auth login` or restart devcontainer |
+| "401 Unauthorized" | Token expired/invalid | Restart devcontainer or re-authenticate |
+| "field not found" | Invalid field name | Use `acli jira field list` to discover correct field IDs |
+
+### Connection Verification
+
+If you suspect connection issues, verify connectivity:
+
+```bash
+# Quick connectivity test
+acli jira project view CLDS
+
+# If this fails, try re-authenticating or restart devcontainer
+```
+
+### 401 Recovery
+
+If you receive a 401 Unauthorized error:
+
+1. **First**: Try the command again (token may auto-refresh)
+2. **If persistent**: Restart the devcontainer (rebuilds auth context)
+3. **Manual auth**: Run `acli jira auth login` if available
 
 ---
 
@@ -405,3 +426,197 @@ acli jira workitem view CLDS-123 --json | jq -r '.fields.assignee.emailAddress'
 - Use `--yes` / `-y` to skip confirmation prompts in scripts
 - Multi-line descriptions work directly in the `--description` string
 - Authentication is automatic in devcontainer via `ATLASSIAN_*` env vars
+
+### Shell Escaping
+
+When passing strings to `--description` or `--summary`:
+
+```bash
+# Use double quotes for strings with special characters
+acli jira workitem create --summary "Fix \"login\" bug" --description "Users can't login"
+
+# Use heredoc for complex multi-line content
+acli jira workitem comment create --key "CLDS-123" --body "$(cat <<'EOF'
+## Summary
+This is a multi-line comment with:
+- Bullet points
+- Code: `function()`
+- Special chars: $PATH
+
+*(Created by Claude Code)*
+EOF
+)"
+```
+
+---
+
+## AI Attribution
+
+When Claude Code creates or updates Jira content (descriptions, comments), **always include this signature as the final line**:
+
+```text
+*(Created by Claude Code)*
+```
+
+This ensures:
+
+- Clear audit trail for AI-generated content
+- Easy filtering/searching of AI-assisted tickets
+- Transparency about content origin
+
+**Example**:
+
+```bash
+acli jira workitem create \
+  --project "CLDS" \
+  --type "Task" \
+  --summary "Implement user authentication" \
+  --description "Add JWT-based authentication to the API endpoints.
+
+## Requirements
+- Token expiration: 24 hours
+- Refresh token support
+- Rate limiting
+
+*(Created by Claude Code)*"
+```
+
+---
+
+## Execution Protocol
+
+Follow these best practices for safe and effective Jira operations:
+
+### 1. Validate Before Update
+
+Always verify a ticket exists before attempting updates:
+
+```bash
+# Check ticket exists and get current state
+acli jira workitem view CLDS-12345 --fields "key,status,summary"
+
+# Then perform update
+acli jira workitem edit --key "CLDS-12345" --description "Updated content"
+```
+
+### 2. Search Context First
+
+If the user mentions a task without providing a ticket key, search via JQL first:
+
+```bash
+# Find relevant tickets by keyword
+acli jira workitem search \
+  --jql "project = CLDS AND summary ~ 'authentication' ORDER BY updated DESC" \
+  --limit 5 \
+  --fields "key,summary,status"
+```
+
+### 3. Confirm Destructive Actions
+
+For delete operations or bulk changes, **always show the command and ask for confirmation** before executing:
+
+```bash
+# Show what will be affected
+acli jira workitem search --jql "project = CLDS AND labels = deprecated" --count
+
+# Then ask user to confirm before:
+acli jira workitem delete --jql "project = CLDS AND labels = deprecated" --yes
+```
+
+### 4. Pre-flight Connection Check
+
+If you encounter connection issues, verify connectivity:
+
+```bash
+# Verify Jira connection is active
+acli jira project view CLDS
+```
+
+---
+
+## Custom Fields
+
+### Discovering Custom Fields
+
+When a standard field name doesn't work, discover the correct field ID:
+
+```bash
+# List all available fields
+acli jira field list
+
+# Search for specific field
+acli jira field list | grep -i "story points"
+# Output: customfield_10023  Story Points  number
+```
+
+### Using Custom Fields
+
+```bash
+# Set custom field value
+acli jira workitem edit --key "CLDS-123" --field "customfield_10023=5"
+
+# Multiple custom fields
+acli jira workitem create \
+  --project "CLDS" \
+  --type "Story" \
+  --summary "New feature" \
+  --field "customfield_10023=8" \
+  --field "customfield_10024=Team Alpha"
+```
+
+---
+
+## Feature Workflow Example
+
+Complete end-to-end example for feature development:
+
+```bash
+#!/bin/bash
+# Feature workflow: Create ticket → Work → Review → Done
+
+# 1. Create the ticket
+TICKET=$(acli jira workitem create \
+  --project "CLDS" \
+  --type "Task" \
+  --summary "Implement user preferences API" \
+  --description "Add REST endpoints for user preferences management.
+
+## Acceptance Criteria
+- GET /api/preferences - fetch user prefs
+- PUT /api/preferences - update user prefs
+- Preferences stored in PostgreSQL
+
+*(Created by Claude Code)*" \
+  --assignee "@me" \
+  --json | jq -r '.key')
+
+echo "Created: $TICKET"
+
+# 2. Start work - transition to In Progress
+acli jira workitem transition --key "$TICKET" --status "In Progress" --yes
+
+# 3. Create feature branch
+git checkout -b "feature/${TICKET}-user-preferences"
+
+# ... development happens ...
+
+# 4. Add implementation notes
+acli jira workitem comment create --key "$TICKET" --body "Implementation complete:
+- Added PreferencesController with GET/PUT endpoints
+- Created preferences table migration
+- Added unit tests (100% coverage)
+
+PR ready for review.
+
+*(Created by Claude Code)*"
+
+# 5. Ready for review - transition status
+acli jira workitem transition --key "$TICKET" --status "In Review" --yes
+
+# ... PR review and merge ...
+
+# 6. Complete - transition to Done
+acli jira workitem transition --key "$TICKET" --status "Done" --yes
+
+echo "Workflow complete for $TICKET"
+```
