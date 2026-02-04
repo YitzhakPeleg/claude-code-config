@@ -19,6 +19,76 @@ gh <command> <subcommand> [flags]
 
 ---
 
+## Authentication
+
+### Check Auth Status
+
+```bash
+gh auth status
+```
+
+### Login
+
+```bash
+# Interactive OAuth login
+gh auth login
+
+# Login with token
+gh auth login --with-token < token.txt
+```
+
+### Multi-Account Switching
+
+For users with multiple GitHub accounts (company + personal):
+
+```bash
+# Switch to specific account
+gh auth switch --user company-handle
+
+# List authenticated accounts
+gh auth status
+```
+
+---
+
+## Repository Context Detection
+
+Before PR/issue operations, detect the current repository context using the helper script:
+
+### Using the Helper Script
+
+```bash
+# Source the script to get context variables
+source .claude/scripts/gh-repo-context.sh
+
+# Available variables after sourcing:
+echo "Owner: $REPO_OWNER"          # e.g., "wiliot"
+echo "Repo: $REPO_NAME"            # e.g., "wilibot-backend-python"
+echo "Full: $REPO_FULL"            # e.g., "wiliot/wilibot-backend-python"
+echo "Default branch: $DEFAULT_BRANCH"  # e.g., "develop"
+```
+
+### With Account Switching
+
+```bash
+# Set account handles, then source
+COMPANY_HANDLE="wiliot" PERSONAL_HANDLE="myuser" source .claude/scripts/gh-repo-context.sh
+# Automatically switches to correct account based on repo owner
+```
+
+### Manual Context Detection
+
+```bash
+# Get repo info as JSON
+gh repo view --json owner,name,defaultBranchRef
+
+# Extract specific values
+REPO_OWNER=$(gh repo view --json owner -q '.owner.login')
+DEFAULT_BRANCH=$(gh repo view --json defaultBranchRef -q '.defaultBranchRef.name')
+```
+
+---
+
 ## Pull Request Operations
 
 ### View PR
